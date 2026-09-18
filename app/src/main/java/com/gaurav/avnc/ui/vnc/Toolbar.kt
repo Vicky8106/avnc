@@ -74,8 +74,7 @@ class Toolbar(private val activity: VncActivity) {
         binding.zoomResetBtn.setOnLongClickListener { resetZoom(); close(); true }
         binding.zoomLockBtn.setOnCheckedChangeListener { _, checked -> toggleZoomLock(checked); close() }
         binding.zoomSaveBtn.setOnClickListener { saveZoom(); close() }
-        binding.virtualKeysBtn.setOnClickListener { activity.virtualKeys.show(true); close() }
-        binding.mouseBtn.setOnClickListener { activity.virtualMouse.toggle(); close() }
+        binding.virtualKeysBtn.setOnClickListener { activity.virtualKeys.show(true); activity.virtualMouse.show(); close() }
 
         // Root view is transparent. Click on it should work just like a click in scrim area
         drawerView.setOnClickListener { close() }

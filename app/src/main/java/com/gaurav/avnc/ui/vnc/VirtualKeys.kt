@@ -44,6 +44,8 @@ import com.gaurav.avnc.util.addOnGlobalLayoutListener
 import com.gaurav.avnc.util.isTrue
 import com.gaurav.avnc.util.toggleKeyboard
 import com.gaurav.avnc.util.getClipboardText
+import com.gaurav.avnc.vnc.XKeySym
+import com.gaurav.avnc.vnc.XKeySymUnicode
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -341,28 +343,38 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         // Release Meta keys to avoid interference with these key events
         releaseMetaKeys()
 
+        // 1. Immediately sync full text to remote clipboard for direct paste
+        viewModel.messenger?.sendClipboardText(clampedText)
+
+        // 2. Stream individual keysyms directly to remote VNC server using native RFB keysyms
+        // This bypasses Android IME/KeyHandler dead-key composition and fake Shift injections
+        // that cause stuck keys and gibberish after long text.
         activity.lifecycleScope.launch(Dispatchers.Default) {
-            val events = keyCharMap.getEvents(clampedText.toCharArray())
-            if (events != null) {
-                val needsPacing = events.size > 80
-                for (event in events) {
-                    withContext(Dispatchers.Main) {
-                        inputHandler.onKeyEvent(event)
-                    }
-                    if (needsPacing && event.action == KeyEvent.ACTION_UP) {
-                        delay(2L)
+            val messenger = viewModel.messenger ?: return@launch
+            val pacingDelay = if (clampedText.length > 100) 8L else 12L
+
+            var idx = 0
+            while (idx < clampedText.length) {
+                val codePoint = clampedText.codePointAt(idx)
+                idx += Character.charCount(codePoint)
+
+                // Skip standalone \r, return is handled on \n
+                if (codePoint == '\r'.code) continue
+
+                val keySym = when (codePoint) {
+                    '\n'.code -> XKeySym.XK_Return
+                    '\t'.code -> XKeySym.XK_Tab
+                    '\b'.code -> XKeySym.XK_BackSpace
+                    else -> {
+                        val legacy = XKeySymUnicode.getLegacyKeySymForUnicodeChar(codePoint)
+                        if (legacy != 0) legacy else XKeySymUnicode.getKeySymForUnicodeChar(codePoint)
                     }
                 }
-            } else {
-                for (codePoint in clampedText.codePoints()) {
-                    val charStr = String(Character.toChars(codePoint))
-                    withContext(Dispatchers.Main) {
-                        inputHandler.onKeyEvent(KeyEvent(SystemClock.uptimeMillis(), charStr, 0, 0))
-                    }
-                    if (clampedText.length > 40) {
-                        delay(2L)
-                    }
-                }
+
+                messenger.sendKey(keySym, 0, true)
+                delay(3L)
+                messenger.sendKey(keySym, 0, false)
+                delay(pacingDelay)
             }
         }
     }
