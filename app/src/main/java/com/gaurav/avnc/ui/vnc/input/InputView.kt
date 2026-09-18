@@ -12,6 +12,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import android.os.SystemClock
+import android.text.InputType
 import android.util.AttributeSet
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -48,11 +49,12 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
             if (!text.isNullOrEmpty()) {
                 val str = text.toString()
                 val now = SystemClock.uptimeMillis()
-                if (now - lastPasteTime < 400L && lastPasteText == str) {
+                val normalized = str.replace("\r\n", " ").replace('\r', ' ').replace('\n', ' ').trim()
+                if (now - lastPasteTime < 2000L && (lastPasteText == normalized || lastPasteText == str)) {
                     return true
                 }
                 lastPasteTime = now
-                lastPasteText = str
+                lastPasteText = normalized
                 (context as? VncActivity)?.sendTextToServer(str)
                 return true
             }
@@ -66,11 +68,12 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
                         val clip = getClipboardText(activity)
                         if (!clip.isNullOrEmpty()) {
                             val now = SystemClock.uptimeMillis()
-                            if (now - lastPasteTime < 400L && lastPasteText == clip) {
+                            val normalized = clip.replace("\r\n", " ").replace('\r', ' ').replace('\n', ' ').trim()
+                            if (now - lastPasteTime < 2000L && (lastPasteText == normalized || lastPasteText == clip)) {
                                 return@launch
                             }
                             lastPasteTime = now
-                            lastPasteText = clip
+                            lastPasteText = normalized
                             activity.sendTextToServer(clip)
                         }
                     }
@@ -102,9 +105,12 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
     }
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
-        outAttrs.imeOptions = outAttrs.imeOptions or
+        outAttrs.imeOptions = EditorInfo.IME_ACTION_NONE or
                 EditorInfo.IME_FLAG_NO_EXTRACT_UI or
                 EditorInfo.IME_FLAG_NO_FULLSCREEN
+        outAttrs.inputType = InputType.TYPE_CLASS_TEXT or
+                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS or
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE
         return InputConnection()
     }
 

@@ -344,7 +344,10 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
 
     private fun handleTextBoxAction(textBox: EditText) {
         val text = textBox.text?.toString() ?: return
-        if (text.isEmpty()) return
+        if (text.isEmpty()) {
+            sendKey(KeyEvent.KEYCODE_ENTER)
+            return
+        }
         sendTextToServer(text)
         textBox.setText("")
     }
@@ -362,14 +365,23 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         if (text.isEmpty()) return
         val clampedText = if (text.length > 1000) text.substring(0, 1000) else text
 
+        // Replace all embedded newlines and carriage returns with spaces so copy-paste NEVER automatically hits Enter!
+        // This ensures the entire text is pasted as a single continuous line, preventing commands or input
+        // fields from prematurely executing at line breaks (e.g. at 200-300 characters).
+        val sanitizedText = clampedText
+            .replace("\r\n", " ")
+            .replace('\r', ' ')
+            .replace('\n', ' ')
+            .trim()
+
+        if (sanitizedText.isEmpty()) return
+
         // Release Meta keys to avoid interference with these key events
         releaseMetaKeys()
         viewModel.messenger?.releaseAllModifiers()
 
         // 1. Immediately sync full text to remote clipboard for direct paste
-        if (clampedText.length > 1) {
-            viewModel.messenger?.sendClipboardText(clampedText)
-        }
+        viewModel.messenger?.sendClipboardText(sanitizedText)
 
         // Cancel previous streaming job so multiple paste/send actions never interleave keystrokes
         sendTextJob?.cancel()
@@ -377,24 +389,17 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         // 2. Stream individual keysyms directly to remote VNC server using native RFB keysyms
         sendTextJob = activity.lifecycleScope.launch(Dispatchers.Default) {
             val messenger = viewModel.messenger ?: return@launch
-            val pacingDelay = if (clampedText.length > 100) 8L else 12L
-
-            // Strip trailing newlines and carriage returns so pasting text never automatically clicks Enter!
-            val textToStream = clampedText.trimEnd('\r', '\n')
+            val pacingDelay = if (sanitizedText.length > 100) 12L else 16L
 
             var idx = 0
-            while (idx < textToStream.length) {
+            while (idx < sanitizedText.length) {
                 if (!isActive) break
-                val codePoint = textToStream.codePointAt(idx)
+                val codePoint = sanitizedText.codePointAt(idx)
                 idx += Character.charCount(codePoint)
-
-                // Skip standalone \r, return is handled on \n
-                if (codePoint == '\r'.code) continue
 
                 val withShift = requiresShift(codePoint)
 
                 val keySym = when (codePoint) {
-                    '\n'.code -> XKeySym.XK_Return
                     '\t'.code -> XKeySym.XK_Tab
                     '\b'.code -> XKeySym.XK_BackSpace
                     else -> {

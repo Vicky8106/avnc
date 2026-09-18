@@ -56,6 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -201,6 +202,7 @@ fun VirtualMouseOverlay(
                         val clampedX = if (isExpanded) offsetX.coerceAtMost(0f) else offsetX
                         IntOffset(clampedX.roundToInt(), offsetY.roundToInt())
                     }
+                    .alpha(0.80f)
             ) {
                 AnimatedContent(
                     targetState = isExpanded,
@@ -268,12 +270,12 @@ fun VirtualMouseOverlay(
                             }
                         }
                     } else {
-                        // Expanded Floating Mouse Control Bar
+                        // Expanded Floating Mouse Control Bar (20% transparent)
                         Surface(
                             shape = RoundedCornerShape(24.dp),
                             tonalElevation = 8.dp,
                             shadowElevation = 12.dp,
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.80f),
                             modifier = Modifier.clip(RoundedCornerShape(24.dp))
                         ) {
                             Row(
@@ -284,26 +286,7 @@ fun VirtualMouseOverlay(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
-                                // 1. Primary Minimize Button: Cross ("✕") at the VERY FRONT of the bar
-                                // Distinct, prominent circular button so it is immediately visible on any screen
-                                IconButton(
-                                    onClick = { virtualMouse.minimize() },
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .background(
-                                            color = MaterialTheme.colorScheme.errorContainer,
-                                            shape = CircleShape
-                                        )
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Collapse to floating button",
-                                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-
-                                // 2. Drag handle to reposition mouse bar anywhere on screen
+                                // Drag handle to reposition mouse bar anywhere on screen
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight()
