@@ -11,6 +11,7 @@ package com.gaurav.avnc.ui.vnc.input
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -36,6 +37,9 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
      * Input connection used for intercepting key events
      */
     inner class InputConnection : BaseInputConnection(this, false) {
+        private var lastPasteTime = 0L
+        private var lastPasteText = ""
+
         override fun sendKeyEvent(event: KeyEvent): Boolean {
             return inputHandler?.onKeyEvent(event) == true || super.sendKeyEvent(event)
         }
@@ -43,6 +47,12 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
         override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
             if (!text.isNullOrEmpty()) {
                 val str = text.toString()
+                val now = SystemClock.uptimeMillis()
+                if (now - lastPasteTime < 400L && lastPasteText == str) {
+                    return true
+                }
+                lastPasteTime = now
+                lastPasteText = str
                 (context as? VncActivity)?.sendTextToServer(str)
                 return true
             }
@@ -55,6 +65,12 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
                     activity.lifecycleScope.launch {
                         val clip = getClipboardText(activity)
                         if (!clip.isNullOrEmpty()) {
+                            val now = SystemClock.uptimeMillis()
+                            if (now - lastPasteTime < 400L && lastPasteText == clip) {
+                                return@launch
+                            }
+                            lastPasteTime = now
+                            lastPasteText = clip
                             activity.sendTextToServer(clip)
                         }
                     }

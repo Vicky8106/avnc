@@ -46,9 +46,12 @@ import com.gaurav.avnc.util.toggleKeyboard
 import com.gaurav.avnc.util.getClipboardText
 import com.gaurav.avnc.vnc.XKeySym
 import com.gaurav.avnc.vnc.XKeySymUnicode
+import android.view.inputmethod.EditorInfo
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.min
@@ -225,9 +228,16 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         binding.textPageBackBtn.setOnClickListener {
             binding.pager.setCurrentItem(0, true)
         }
-        binding.textBox.setOnEditorActionListener { _, _, _ ->
-            handleTextBoxAction(binding.textBox)
-            true
+        binding.textBox.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_SEND ||
+                actionId == EditorInfo.IME_ACTION_DONE ||
+                (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)
+            ) {
+                handleTextBoxAction(binding.textBox)
+                true
+            } else {
+                false
+            }
         }
         binding.textBox.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) inputView.requestFocus()
@@ -330,8 +340,11 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         })
     }
 
+    private var sendTextJob: Job? = null
+
     private fun handleTextBoxAction(textBox: EditText) {
-        val text = textBox.text?.ifEmpty { "\n" }?.toString() ?: return
+        val text = textBox.text?.toString() ?: return
+        if (text.isEmpty()) return
         sendTextToServer(text)
         textBox.setText("")
     }
@@ -344,18 +357,25 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         releaseMetaKeys()
 
         // 1. Immediately sync full text to remote clipboard for direct paste
-        viewModel.messenger?.sendClipboardText(clampedText)
+        if (clampedText.length > 1) {
+            viewModel.messenger?.sendClipboardText(clampedText)
+        }
+
+        // Cancel previous streaming job so multiple paste/send actions never interleave keystrokes
+        sendTextJob?.cancel()
 
         // 2. Stream individual keysyms directly to remote VNC server using native RFB keysyms
-        // This bypasses Android IME/KeyHandler dead-key composition and fake Shift injections
-        // that cause stuck keys and gibberish after long text.
-        activity.lifecycleScope.launch(Dispatchers.Default) {
+        sendTextJob = activity.lifecycleScope.launch(Dispatchers.Default) {
             val messenger = viewModel.messenger ?: return@launch
-            val pacingDelay = if (clampedText.length > 100) 8L else 12L
+            val pacingDelay = if (clampedText.length > 100) 6L else 10L
+
+            // Strip trailing newlines and carriage returns so pasting text never automatically clicks Enter!
+            val textToStream = clampedText.trimEnd('\r', '\n')
 
             var idx = 0
-            while (idx < clampedText.length) {
-                val codePoint = clampedText.codePointAt(idx)
+            while (idx < textToStream.length) {
+                if (!isActive) break
+                val codePoint = textToStream.codePointAt(idx)
                 idx += Character.charCount(codePoint)
 
                 // Skip standalone \r, return is handled on \n
@@ -371,9 +391,7 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
                     }
                 }
 
-                messenger.sendKey(keySym, 0, true)
-                delay(3L)
-                messenger.sendKey(keySym, 0, false)
+                messenger.sendKeyPress(keySym, 0, 5L)
                 delay(pacingDelay)
             }
         }

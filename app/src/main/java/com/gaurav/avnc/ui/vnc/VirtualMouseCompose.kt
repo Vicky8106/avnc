@@ -21,6 +21,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -53,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -101,15 +103,19 @@ class VirtualMouse(private val activity: VncActivity) {
         }
     }
 
+    fun minimize() {
+        isExpandedState.value = false
+    }
+
+    fun expand() {
+        isExpandedState.value = true
+    }
+
     fun toggle() {
         if (isVisibleState.value) {
-            if (!isExpandedState.value) {
-                isExpandedState.value = true
-            } else {
-                hide()
-            }
+            hide()
         } else {
-            show(expand = true)
+            show(expand = false)
         }
     }
 
@@ -197,6 +203,7 @@ fun VirtualMouseOverlay(
                 ) { expanded ->
                     if (!expanded) {
                         // Floating Action Button: touching/tapping expands the mouse options
+                        val touchSlop = LocalViewConfiguration.current.touchSlop
                         Surface(
                             modifier = Modifier
                                 .size(56.dp)
@@ -205,26 +212,32 @@ fun VirtualMouseOverlay(
                                     awaitEachGesture {
                                         val down = awaitFirstDown(requireUnconsumed = false)
                                         var hasMoved = false
+                                        var totalDx = 0f
+                                        var totalDy = 0f
                                         var lastPos = down.position
                                         while (true) {
                                             val event = awaitPointerEvent()
                                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
                                             if (change.changedToUp()) {
                                                 if (!hasMoved) {
-                                                    isExpanded = true
+                                                    virtualMouse.expand()
                                                 }
                                                 break
                                             }
                                             val currentPos = change.position
                                             val dx = currentPos.x - lastPos.x
                                             val dy = currentPos.y - lastPos.y
-                                            if (hypot(dx, dy) > 4f) {
+                                            totalDx += dx
+                                            totalDy += dy
+                                            if (!hasMoved && hypot(totalDx, totalDy) > touchSlop) {
                                                 hasMoved = true
+                                            }
+                                            if (hasMoved) {
                                                 change.consume()
                                                 offsetX += dx
                                                 offsetY += dy
-                                                lastPos = currentPos
                                             }
+                                            lastPos = currentPos
                                         }
                                     }
                                 },
@@ -237,7 +250,7 @@ fun VirtualMouseOverlay(
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_mouse),
-                                    contentDescription = "Virtual Mouse",
+                                    contentDescription = "Virtual Mouse - Tap to expand",
                                     tint = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(28.dp)
                                 )
@@ -407,22 +420,28 @@ fun VirtualMouseOverlay(
                                     )
                                 }
 
-                                // Collapse Button: collapses back to floating bubble
-                                IconButton(
-                                    onClick = { isExpanded = false },
-                                    modifier = Modifier.size(36.dp)
+                                // Minimize Button: explicitly collapses back to floating bubble
+                                FilledTonalButton(
+                                    onClick = { virtualMouse.minimize() },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    ),
+                                    modifier = Modifier.height(40.dp)
                                 ) {
                                     Icon(
-                                        painter = painterResource(id = R.drawable.ic_mouse),
-                                        contentDescription = "Collapse",
-                                        tint = MaterialTheme.colorScheme.primary
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Minimize",
+                                        modifier = Modifier.size(16.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text("Min", fontSize = 12.sp)
                                 }
 
                                 // Close Button: dismisses overlay completely
                                 IconButton(
                                     onClick = {
-                                        isExpanded = false
                                         virtualMouse.hide()
                                     },
                                     modifier = Modifier.size(36.dp)

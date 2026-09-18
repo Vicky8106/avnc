@@ -84,6 +84,19 @@ class Messenger(private val client: VncClient) {
         return execute { client.sendKeyEvent(keySym, xtCode, isDown) }
     }
 
+    fun sendKeyPress(keySym: Int, xtCode: Int = 0, pressDurationMs: Long = 6L): Boolean {
+        return execute {
+            client.sendKeyEvent(keySym, xtCode, true)
+            if (pressDurationMs > 0) {
+                try {
+                    Thread.sleep(pressDurationMs)
+                } catch (_: InterruptedException) {
+                }
+            }
+            client.sendKeyEvent(keySym, xtCode, false)
+        }
+    }
+
     fun insertButtonUpDelay() {
         execute { runCatching { Thread.sleep(200) } }
     }

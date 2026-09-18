@@ -74,11 +74,11 @@
                     android:layout_weight="1"
                     android:paddingTop="0dp"
                     android:hint="@string/hint_send_text_to_server"
-                    android:imeOptions="actionSend|flagNoFullscreen|flagNoExtractUi"
+                    android:imeOptions="actionDone|flagNoFullscreen|flagNoExtractUi"
                     android:importantForAutofill="no"
                     android:inputType="textMultiLine|textNoSuggestions"
                     android:maxLength="1000"
-                    android:maxLines="3"
+                    android:maxLines="5"
                     android:scrollHorizontally="false" />
 
                 <ImageButton
