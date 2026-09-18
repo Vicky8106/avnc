@@ -4,17 +4,17 @@
 <p align="center"> <b>VNC android free</b> is a high-performance, open-source VNC client for Android. </p>
 
 ### 📥 Download APK
-* **[Download Latest VNC-android-free.apk (v1.5.0)](https://github.com/Vicky8106/avnc/releases/download/v1.5.0/VNC-android-free.apk)**
+* **[Download Latest VNC-android-free.apk (v1.6.0)](https://github.com/Vicky8106/avnc/releases/download/v1.6.0/VNC-android-free.apk)**
 * Repository file: [`release/VNC-android-free.apk`](release/VNC-android-free.apk)
 
 ---
 
 ### Highlights & New Features
-- **Prominent Cross ("✕") Minimize Button (Start & End):** The Cross ("✕") button to collapse the mouse options back into a floating circular button is now positioned prominently right at the very beginning of the bar (and also at the end). Tapping it smoothly collapses the bar to the floating button; touching the floating button expands it again.
-- **Horizontal Scroll & Compact Sizing:** Mouse control buttons are optimized and compact, and the bar supports horizontal scrolling and bounds clamping so no buttons are ever clipped off-screen on any device.
+- **20% Transparent Virtual Mouse Overlay:** The entire virtual mouse interface (both the floating circular action button and the expanded control bar) has 80% opacity (`alpha = 0.80f`), allowing you to see the underlying remote desktop clearly while using mouse controls.
+- **Clean Single Cross ("✕") Button:** Removed the redundant left cross button; a single, clear circular minimize button is located at the right end of the bar to collapse it back into the floating bubble.
+- **Definitive Fix for Automatic Enter on Long Copy-Paste:** Embedded line breaks (`\r\n`, `\r`, `\n`, etc.) within pasted text are now sanitized to spaces during paste streaming. This guarantees that wrapped commands, long strings, or multi-line text (up to 1,000 characters) NEVER trigger a premature `Return`/Enter key in the middle of pasting, allowing the entire text to paste completely and safely without executing early.
+- **Enhanced IME & Context Menu Deduplication:** Extended paste deduplication window and configured `IME_ACTION_NONE` so soft keyboards do not interrupt ongoing paste streams with synthetic Enter actions.
 - **Fixed Paste Gibberish & Caps Lock Locking:** Uppercase letters and shifted symbols (`~!@#$%^&*()_+{}|:"<>?`) are sent with atomic `Shift` keysym wrapping, preventing the remote VNC server from toggling Caps Lock. Added `releaseAllModifiers()` before text streaming, and added a dedicated **Caps** button in Virtual Keys to toggle/unstick remote Caps Lock.
-- **Fixed Automatic Enter on Copy-Paste:** Removed empty-text synthetic `\n` in handlers, filtered IME actions, stripped trailing newlines, and serialized streaming keystrokes so pastes never auto-execute.
-- **1,000-Character Paste Support:** Text input expanded up to 1,000 characters with direct RFB Unicode keysym streaming and clipboard synchronization.
 - **Expandable Floating Mouse (RealVNC Style):** On-screen Floating Action Button (FAB) that expands into full mouse options (Left Click, Middle Click, Scroll Up, Scroll Down, Right Click, Keyboard trigger).
 - **Unified Mouse & Keyboard:** Opening the keyboard automatically surfaces the mouse controls for seamless navigation.
 
