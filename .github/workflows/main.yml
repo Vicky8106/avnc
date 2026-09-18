@@ -29,5 +29,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: free-vnc-debug-apk
+          name: vnc-android-free-debug-apk
           path: app/build/outputs/apk/debug/*.apk
