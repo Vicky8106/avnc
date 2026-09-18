@@ -4,7 +4,7 @@
 <p align="center"> <b>VNC android free</b> is a high-performance, open-source VNC client for Android. </p>
 
 ### 📥 Download APK
-* **[Download Latest VNC-android-free.apk](https://github.com/Vicky8106/avnc/releases/download/v1.0.0/VNC-android-free.apk)**
+* **[Download Latest VNC-android-free.apk (v1.1.0)](https://github.com/Vicky8106/avnc/releases/download/v1.1.0/VNC-android-free.apk)**
 * Repository file: [`release/VNC-android-free.apk`](release/VNC-android-free.apk)
 
 ---
