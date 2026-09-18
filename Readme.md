@@ -4,13 +4,15 @@
 <p align="center"> <b>VNC android free</b> is a high-performance, open-source VNC client for Android. </p>
 
 ### 📥 Download APK
-* **[Download Latest VNC-android-free.apk (v1.2.0)](https://github.com/Vicky8106/avnc/releases/download/v1.2.0/VNC-android-free.apk)**
+* **[Download Latest VNC-android-free.apk (v1.3.0)](https://github.com/Vicky8106/avnc/releases/download/v1.3.0/VNC-android-free.apk)**
 * Repository file: [`release/VNC-android-free.apk`](release/VNC-android-free.apk)
 
 ---
 
 ### Highlights & New Features
-- **1,000-Character Paste Support:** Text input expanded up to 1,000 characters with direct RFB Unicode keysym streaming and clipboard synchronization (eliminates dead-key and Shift corruption).
+- **Dedicated Mouse Minimize ("Min") Button:** Prominent "Min" button with downward chevron on the floating mouse control bar to instantly collapse back to the compact circular FAB bubble. Double-tap drag handle to collapse; long-press bubble to hide.
+- **Fixed Automatic Enter on Copy-Paste:** Fixed the bug where copy-pasting text longer than 150-200 characters triggered an automatic Enter key press. Removed synthetic `\n` in empty text handlers, filtered IME actions, stripped trailing newlines, and serialized streaming keystrokes.
+- **1,000-Character Paste Support:** Text input expanded up to 1,000 characters with direct RFB Unicode keysym streaming and clipboard synchronization.
 - **Expandable Floating Mouse (RealVNC Style):** On-screen Floating Action Button (FAB) that expands into full mouse options (Left Click, Middle Click, Scroll Up, Scroll Down, Right Click, Keyboard trigger).
 - **Unified Mouse & Keyboard:** Opening the keyboard automatically surfaces the mouse controls for seamless navigation.
 
