@@ -339,6 +339,7 @@ class VncActivity : AppCompatActivity() {
         binding.frameView.keepScreenOn = viewModel.pref.viewer.keepScreenOn
         inputHandler.onSessionConnected(this)
         virtualKeys.onConnected()
+        virtualMouse.show()
         SamsungDex.setMetaKeyCapture(this, true)
 
         showViewerHelp()

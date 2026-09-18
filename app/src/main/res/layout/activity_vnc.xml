@@ -89,9 +89,8 @@
                 <!--Virtual mouse (Jetpack Compose)-->
                 <androidx.compose.ui.platform.ComposeView
                     android:id="@+id/virtual_mouse_compose_view"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal|bottom" />
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
 
 
 
