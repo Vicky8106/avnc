@@ -4,13 +4,14 @@
 <p align="center"> <b>VNC android free</b> is a high-performance, open-source VNC client for Android. </p>
 
 ### 📥 Download APK
-* **[Download Latest VNC-android-free.apk (v1.4.0)](https://github.com/Vicky8106/avnc/releases/download/v1.4.0/VNC-android-free.apk)**
+* **[Download Latest VNC-android-free.apk (v1.5.0)](https://github.com/Vicky8106/avnc/releases/download/v1.5.0/VNC-android-free.apk)**
 * Repository file: [`release/VNC-android-free.apk`](release/VNC-android-free.apk)
 
 ---
 
 ### Highlights & New Features
-- **Cross ("X") Button to Minimize Mouse Options:** Tapping the Cross ("X") button on the expanded mouse options bar immediately collapses it back into the compact floating circular button. Touching the floating button opens the mouse options again.
+- **Prominent Cross ("✕") Minimize Button (Start & End):** The Cross ("✕") button to collapse the mouse options back into a floating circular button is now positioned prominently right at the very beginning of the bar (and also at the end). Tapping it smoothly collapses the bar to the floating button; touching the floating button expands it again.
+- **Horizontal Scroll & Compact Sizing:** Mouse control buttons are optimized and compact, and the bar supports horizontal scrolling and bounds clamping so no buttons are ever clipped off-screen on any device.
 - **Fixed Paste Gibberish & Caps Lock Locking:** Uppercase letters and shifted symbols (`~!@#$%^&*()_+{}|:"<>?`) are sent with atomic `Shift` keysym wrapping, preventing the remote VNC server from toggling Caps Lock. Added `releaseAllModifiers()` before text streaming, and added a dedicated **Caps** button in Virtual Keys to toggle/unstick remote Caps Lock.
 - **Fixed Automatic Enter on Copy-Paste:** Removed empty-text synthetic `\n` in handlers, filtered IME actions, stripped trailing newlines, and serialized streaming keystrokes so pastes never auto-execute.
 - **1,000-Character Paste Support:** Text input expanded up to 1,000 characters with direct RFB Unicode keysym streaming and clipboard synchronization.
