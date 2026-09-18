@@ -14,14 +14,18 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -29,6 +33,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -192,7 +197,10 @@ fun VirtualMouseOverlay(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 20.dp, bottom = 80.dp)
-                    .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                    .offset {
+                        val clampedX = if (isExpanded) offsetX.coerceAtMost(0f) else offsetX
+                        IntOffset(clampedX.roundToInt(), offsetY.roundToInt())
+                    }
             ) {
                 AnimatedContent(
                     targetState = isExpanded,
@@ -215,11 +223,14 @@ fun VirtualMouseOverlay(
                                         var totalDx = 0f
                                         var totalDy = 0f
                                         var lastPos = down.position
+                                        val downTime = System.currentTimeMillis()
                                         while (true) {
                                             val event = awaitPointerEvent()
                                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
                                             if (change.changedToUp()) {
-                                                if (!hasMoved) {
+                                                val duration = System.currentTimeMillis() - downTime
+                                                val dist = hypot(totalDx, totalDy)
+                                                if (!hasMoved || (duration < 350 && dist < touchSlop * 2f)) {
                                                     virtualMouse.expand()
                                                 }
                                                 break
@@ -267,16 +278,36 @@ fun VirtualMouseOverlay(
                         ) {
                             Row(
                                 modifier = Modifier
-                                    .padding(horizontal = 8.dp, vertical = 6.dp)
-                                    .height(48.dp),
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 6.dp, vertical = 4.dp)
+                                    .height(46.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
-                                // Drag handle to reposition mouse bar anywhere on screen
+                                // 1. Primary Minimize Button: Cross ("✕") at the VERY FRONT of the bar
+                                // Distinct, prominent circular button so it is immediately visible on any screen
+                                IconButton(
+                                    onClick = { virtualMouse.minimize() },
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.errorContainer,
+                                            shape = CircleShape
+                                        )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Collapse to floating button",
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                // 2. Drag handle to reposition mouse bar anywhere on screen
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight()
-                                        .width(22.dp)
+                                        .width(18.dp)
                                         .pointerInput(Unit) {
                                             detectDragGestures { change, dragAmount ->
                                                 change.consume()
@@ -290,11 +321,11 @@ fun VirtualMouseOverlay(
                                         painter = painterResource(id = R.drawable.ic_drag_indicator),
                                         contentDescription = "Reposition",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
 
-                                // Left Click Button (Supports Hold & Drag)
+                                // 3. Left Click Button (Supports Hold & Drag)
                                 var isLeftPressed by remember { mutableStateOf(false) }
                                 FilledTonalButton(
                                     onClick = { /* Handled by pointerInput */ },
@@ -306,9 +337,11 @@ fun VirtualMouseOverlay(
                                     } else {
                                         ButtonDefaults.filledTonalButtonColors()
                                     },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier
-                                        .height(40.dp)
+                                        .height(36.dp)
+                                        .defaultMinSize(minWidth = 38.dp, minHeight = 36.dp)
                                         .pointerInput(Unit) {
                                             detectTapGestures(
                                                 onPress = {
@@ -321,19 +354,22 @@ fun VirtualMouseOverlay(
                                             )
                                         }
                                 ) {
-                                    Text("Left", fontSize = 13.sp)
+                                    Text("Left", fontSize = 12.sp)
                                 }
 
-                                // Middle Click Button
+                                // 4. Middle Click Button
                                 FilledTonalButton(
                                     onClick = { virtualMouse.onMiddleClick() },
+                                    contentPadding = PaddingValues(horizontal = 7.dp, vertical = 0.dp),
                                     shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.height(40.dp)
+                                    modifier = Modifier
+                                        .height(36.dp)
+                                        .defaultMinSize(minWidth = 34.dp, minHeight = 36.dp)
                                 ) {
                                     Text("Mid", fontSize = 12.sp)
                                 }
 
-                                // Scroll Up Button (Supports hold-to-repeat)
+                                // 5. Scroll Up Button (Supports hold-to-repeat)
                                 var isScrollUpHolding by remember { mutableStateOf(false) }
                                 LaunchedEffect(isScrollUpHolding) {
                                     if (isScrollUpHolding) {
@@ -348,7 +384,7 @@ fun VirtualMouseOverlay(
                                 IconButton(
                                     onClick = { virtualMouse.onScrollUp() },
                                     modifier = Modifier
-                                        .size(38.dp)
+                                        .size(34.dp)
                                         .pointerInput(Unit) {
                                             detectTapGestures(
                                                 onPress = {
@@ -366,7 +402,7 @@ fun VirtualMouseOverlay(
                                     )
                                 }
 
-                                // Scroll Down Button (Supports hold-to-repeat)
+                                // 6. Scroll Down Button (Supports hold-to-repeat)
                                 var isScrollDownHolding by remember { mutableStateOf(false) }
                                 LaunchedEffect(isScrollDownHolding) {
                                     if (isScrollDownHolding) {
@@ -381,7 +417,7 @@ fun VirtualMouseOverlay(
                                 IconButton(
                                     onClick = { virtualMouse.onScrollDown() },
                                     modifier = Modifier
-                                        .size(38.dp)
+                                        .size(34.dp)
                                         .pointerInput(Unit) {
                                             detectTapGestures(
                                                 onPress = {
@@ -399,19 +435,22 @@ fun VirtualMouseOverlay(
                                     )
                                 }
 
-                                // Right Click Button
+                                // 7. Right Click Button
                                 FilledTonalButton(
                                     onClick = { virtualMouse.onRightClick() },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                                     shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.height(40.dp)
+                                    modifier = Modifier
+                                        .height(36.dp)
+                                        .defaultMinSize(minWidth = 38.dp, minHeight = 36.dp)
                                 ) {
-                                    Text("Right", fontSize = 13.sp)
+                                    Text("Right", fontSize = 12.sp)
                                 }
 
-                                // Keyboard Button: opens keyboard directly from mouse bar
+                                // 8. Keyboard Button: opens keyboard directly from mouse bar
                                 IconButton(
                                     onClick = { virtualMouse.onOpenKeyboard() },
-                                    modifier = Modifier.size(36.dp)
+                                    modifier = Modifier.size(34.dp)
                                 ) {
                                     Icon(
                                         painter = painterResource(id = R.drawable.ic_keyboard),
@@ -420,15 +459,21 @@ fun VirtualMouseOverlay(
                                     )
                                 }
 
-                                // Minimize Button: Cross ("X") that collapses back to floating button
+                                // 9. Second Minimize Button at the END: so whether looking at start or end, a Cross ("✕") is right there!
                                 IconButton(
                                     onClick = { virtualMouse.minimize() },
-                                    modifier = Modifier.size(36.dp)
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+                                            shape = CircleShape
+                                        )
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Minimize to floating button",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        contentDescription = "Collapse to floating button",
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(17.dp)
                                     )
                                 }
                             }
