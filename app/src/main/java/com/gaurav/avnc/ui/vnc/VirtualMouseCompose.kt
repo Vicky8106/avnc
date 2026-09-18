@@ -30,11 +30,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.ui.res.painterResource
+import com.gaurav.avnc.R
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -209,7 +208,7 @@ fun VirtualMouseOverlay(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.DragIndicator,
+                            painter = painterResource(id = R.drawable.ic_drag_indicator),
                             contentDescription = "Reposition",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             modifier = Modifier.size(18.dp)
@@ -339,7 +338,7 @@ fun VirtualMouseOverlay(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = if (isDragLocked) Icons.Default.Lock else Icons.Default.LockOpen,
+                            painter = painterResource(id = if (isDragLocked) R.drawable.ic_lock else R.drawable.ic_lock_open),
                             contentDescription = "Drag Lock",
                             tint = if (isDragLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
