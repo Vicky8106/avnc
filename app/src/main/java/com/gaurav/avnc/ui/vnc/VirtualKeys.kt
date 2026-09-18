@@ -349,12 +349,22 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         textBox.setText("")
     }
 
+    private fun requiresShift(codePoint: Int): Boolean {
+        if (codePoint in 'A'.code..'Z'.code) return true
+        return when (codePoint.toChar()) {
+            '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
+            '_', '+', '{', '}', '|', ':', '"', '<', '>', '?' -> true
+            else -> false
+        }
+    }
+
     fun sendTextToServer(text: String) {
         if (text.isEmpty()) return
         val clampedText = if (text.length > 1000) text.substring(0, 1000) else text
 
         // Release Meta keys to avoid interference with these key events
         releaseMetaKeys()
+        viewModel.messenger?.releaseAllModifiers()
 
         // 1. Immediately sync full text to remote clipboard for direct paste
         if (clampedText.length > 1) {
@@ -367,7 +377,7 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         // 2. Stream individual keysyms directly to remote VNC server using native RFB keysyms
         sendTextJob = activity.lifecycleScope.launch(Dispatchers.Default) {
             val messenger = viewModel.messenger ?: return@launch
-            val pacingDelay = if (clampedText.length > 100) 6L else 10L
+            val pacingDelay = if (clampedText.length > 100) 8L else 12L
 
             // Strip trailing newlines and carriage returns so pasting text never automatically clicks Enter!
             val textToStream = clampedText.trimEnd('\r', '\n')
@@ -381,6 +391,8 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
                 // Skip standalone \r, return is handled on \n
                 if (codePoint == '\r'.code) continue
 
+                val withShift = requiresShift(codePoint)
+
                 val keySym = when (codePoint) {
                     '\n'.code -> XKeySym.XK_Return
                     '\t'.code -> XKeySym.XK_Tab
@@ -391,7 +403,7 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
                     }
                 }
 
-                messenger.sendKeyPress(keySym, 0, 5L)
+                messenger.sendKeyPress(keySym, 0, 6L, withShift = withShift)
                 delay(pacingDelay)
             }
         }
@@ -445,6 +457,7 @@ enum class VirtualKey(
     LeftCtrl(keyCode = KeyEvent.KEYCODE_CTRL_LEFT, label = "Ctrl", isToggle = true),
     LeftAlt(keyCode = KeyEvent.KEYCODE_ALT_LEFT, label = "Alt", isToggle = true),
     LeftSuper(keyCode = KeyEvent.KEYCODE_META_LEFT, label = "Super", icon = R.drawable.ic_super_key, isToggle = true),
+    CapsLock(keyCode = KeyEvent.KEYCODE_CAPS_LOCK, label = "Caps", isToggle = true),
 
     Esc(keyCode = KeyEvent.KEYCODE_ESCAPE),
     Tab(keyCode = KeyEvent.KEYCODE_TAB),
@@ -483,6 +496,7 @@ object VirtualKeyLayoutConfig {
 
     private val DEFAULT_LAYOUT = listOf(VirtualKey.ToggleKeyboard, VirtualKey.CloseKeys, VirtualKey.Esc, VirtualKey.LeftSuper,
                                         VirtualKey.Tab, VirtualKey.LeftCtrl, VirtualKey.LeftShift, VirtualKey.LeftAlt,
+                                        VirtualKey.CapsLock,
                                         VirtualKey.Home, VirtualKey.Left, VirtualKey.Up, VirtualKey.Down, VirtualKey.End,
                                         VirtualKey.Right, VirtualKey.PgUp, VirtualKey.PgDn)
 

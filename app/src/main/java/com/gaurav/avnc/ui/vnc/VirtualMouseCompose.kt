@@ -420,35 +420,14 @@ fun VirtualMouseOverlay(
                                     )
                                 }
 
-                                // Minimize Button: explicitly collapses back to floating bubble
-                                FilledTonalButton(
-                                    onClick = { virtualMouse.minimize() },
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    ),
-                                    modifier = Modifier.height(40.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
-                                        contentDescription = "Minimize",
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(2.dp))
-                                    Text("Min", fontSize = 12.sp)
-                                }
-
-                                // Close Button: dismisses overlay completely
+                                // Minimize Button: Cross ("X") that collapses back to floating button
                                 IconButton(
-                                    onClick = {
-                                        virtualMouse.hide()
-                                    },
+                                    onClick = { virtualMouse.minimize() },
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Close",
+                                        contentDescription = "Minimize to floating button",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }

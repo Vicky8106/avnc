@@ -12,6 +12,7 @@ import android.graphics.PointF
 import android.util.Log
 import com.gaurav.avnc.vnc.PointerButton
 import com.gaurav.avnc.vnc.VncClient
+import com.gaurav.avnc.vnc.XKeySym
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -84,8 +85,12 @@ class Messenger(private val client: VncClient) {
         return execute { client.sendKeyEvent(keySym, xtCode, isDown) }
     }
 
-    fun sendKeyPress(keySym: Int, xtCode: Int = 0, pressDurationMs: Long = 6L): Boolean {
+    fun sendKeyPress(keySym: Int, xtCode: Int = 0, pressDurationMs: Long = 6L, withShift: Boolean = false): Boolean {
         return execute {
+            if (withShift) {
+                client.sendKeyEvent(XKeySym.XK_Shift_L, 0, true)
+                try { Thread.sleep(2) } catch (_: InterruptedException) {}
+            }
             client.sendKeyEvent(keySym, xtCode, true)
             if (pressDurationMs > 0) {
                 try {
@@ -94,6 +99,23 @@ class Messenger(private val client: VncClient) {
                 }
             }
             client.sendKeyEvent(keySym, xtCode, false)
+            if (withShift) {
+                try { Thread.sleep(2) } catch (_: InterruptedException) {}
+                client.sendKeyEvent(XKeySym.XK_Shift_L, 0, false)
+            }
+        }
+    }
+
+    fun releaseAllModifiers() {
+        execute {
+            client.sendKeyEvent(XKeySym.XK_Shift_L, 0, false)
+            client.sendKeyEvent(XKeySym.XK_Shift_R, 0, false)
+            client.sendKeyEvent(XKeySym.XK_Control_L, 0, false)
+            client.sendKeyEvent(XKeySym.XK_Control_R, 0, false)
+            client.sendKeyEvent(XKeySym.XK_Alt_L, 0, false)
+            client.sendKeyEvent(XKeySym.XK_Alt_R, 0, false)
+            client.sendKeyEvent(XKeySym.XK_Meta_L, 0, false)
+            client.sendKeyEvent(XKeySym.XK_Meta_R, 0, false)
         }
     }
 
