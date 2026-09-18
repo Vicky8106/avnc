@@ -49,6 +49,12 @@
                     android:contentDescription="@string/desc_virtual_keys_btn"
                     android:src="@drawable/ic_keyboard_mini" />
 
+                <ImageButton
+                    android:id="@+id/mouse_btn"
+                    style="@style/ImageButton"
+                    android:contentDescription="Virtual Mouse"
+                    android:src="@drawable/ic_mouse" />
+
                 <ToggleButton
                     android:id="@+id/view_modes_toggle"
                     style="@style/ToolbarFlyoutToggle"

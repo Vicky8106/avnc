@@ -43,6 +43,12 @@ import com.gaurav.avnc.util.AppPreferences
 import com.gaurav.avnc.util.addOnGlobalLayoutListener
 import com.gaurav.avnc.util.isTrue
 import com.gaurav.avnc.util.toggleKeyboard
+import com.gaurav.avnc.util.getClipboardText
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.min
 import kotlin.math.sign
 
@@ -227,7 +233,19 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         binding.textBox.onTextCopyListener = {
             viewModel.sendClipboardText()
         }
-
+        binding.textPageSendBtn.setOnClickListener {
+            handleTextBoxAction(binding.textBox)
+        }
+        binding.textPagePasteBtn.setOnClickListener {
+            activity.lifecycleScope.launch {
+                val clipText = getClipboardText(activity)
+                if (!clipText.isNullOrEmpty()) {
+                    val clamped = if (clipText.length > 1000) clipText.substring(0, 1000) else clipText
+                    binding.textBox.setText(clamped)
+                    binding.textBox.setSelection(clamped.length)
+                }
+            }
+        }
     }
 
     private fun initKeys(binding: VirtualKeysBinding) {
@@ -312,19 +330,41 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
 
     private fun handleTextBoxAction(textBox: EditText) {
         val text = textBox.text?.ifEmpty { "\n" }?.toString() ?: return
-        val events = keyCharMap.getEvents(text.toCharArray())
+        sendTextToServer(text)
+        textBox.setText("")
+    }
+
+    fun sendTextToServer(text: String) {
+        if (text.isEmpty()) return
+        val clampedText = if (text.length > 1000) text.substring(0, 1000) else text
 
         // Release Meta keys to avoid interference with these key events
         releaseMetaKeys()
 
-        // These events are sent to KeyHandler.onKeyEvent() instead of onVkKeyEvent()
-        // to treat these like normal system key events.
-        if (events == null)
-            inputHandler.onKeyEvent(KeyEvent(SystemClock.uptimeMillis(), text, 0, 0))
-        else
-            events.forEach { inputHandler.onKeyEvent(it) }
-
-        textBox.setText("")
+        activity.lifecycleScope.launch(Dispatchers.Default) {
+            val events = keyCharMap.getEvents(clampedText.toCharArray())
+            if (events != null) {
+                val needsPacing = events.size > 80
+                for (event in events) {
+                    withContext(Dispatchers.Main) {
+                        inputHandler.onKeyEvent(event)
+                    }
+                    if (needsPacing && event.action == KeyEvent.ACTION_UP) {
+                        delay(2L)
+                    }
+                }
+            } else {
+                for (codePoint in clampedText.codePoints()) {
+                    val charStr = String(Character.toChars(codePoint))
+                    withContext(Dispatchers.Main) {
+                        inputHandler.onKeyEvent(KeyEvent(SystemClock.uptimeMillis(), charStr, 0, 0))
+                    }
+                    if (clampedText.length > 40) {
+                        delay(2L)
+                    }
+                }
+            }
+        }
     }
 
     private fun sendKey(keyCode: Int) {

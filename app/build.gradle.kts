@@ -4,6 +4,7 @@ plugins {
     id("com.android.application") version "9.2.1"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.20"
     id("org.jetbrains.kotlin.plugin.parcelize") version "2.2.20"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.2.20"
     id("com.android.legacy-kapt") version "9.2.1"
 }
 
@@ -67,6 +68,7 @@ android {
     buildFeatures {
         dataBinding = true
         buildConfig = true
+        compose = true
     }
 
     externalNativeBuild {
@@ -126,6 +128,14 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("org.connectbot:sshlib:2.2.36")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+
+    val composeBom = platform("androidx.compose:compose-bom:2024.10.01")
+    implementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.activity:activity-compose:1.10.1")
 
     debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 

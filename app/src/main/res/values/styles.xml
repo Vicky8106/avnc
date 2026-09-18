@@ -178,4 +178,16 @@
         <item name="colorPrimary">?colorSecondary</item>
     </style>
 
+    <style name="VirtualMouseButton" parent="VirtualKey">
+        <item name="android:minWidth">56dp</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="VirtualMouseButton.Scroll" parent="ImageButton">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">40dp</item>
+    </style>
 </resources>

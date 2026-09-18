@@ -70,13 +70,33 @@
                     android:id="@+id/text_box"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="bottom"
+                    android:layout_gravity="center_vertical"
                     android:layout_weight="1"
                     android:paddingTop="0dp"
                     android:hint="@string/hint_send_text_to_server"
                     android:imeOptions="actionSend|flagNoFullscreen|flagNoExtractUi"
                     android:importantForAutofill="no"
-                    android:inputType="text" />
+                    android:inputType="textMultiLine|textNoSuggestions"
+                    android:maxLength="1000"
+                    android:maxLines="3"
+                    android:scrollHorizontally="false" />
+
+                <ImageButton
+                    android:id="@+id/text_page_paste_btn"
+                    style="@style/VirtualKey.Compact"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="Paste from Clipboard"
+                    android:src="@drawable/ic_content_paste"
+                    app:tint="?colorPrimary" />
+
+                <ImageButton
+                    android:id="@+id/text_page_send_btn"
+                    style="@style/VirtualKey.Compact"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="Send text"
+                    android:src="@drawable/ic_send"
+                    app:tint="?colorPrimary" />
+
 
             </LinearLayout>
         </LinearLayout>

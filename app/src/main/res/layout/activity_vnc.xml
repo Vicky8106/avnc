@@ -86,6 +86,15 @@
                     android:layout_gravity="center_horizontal|bottom"
                     android:layout="@layout/virtual_keys" />
 
+                <!--Virtual mouse (Jetpack Compose)-->
+                <androidx.compose.ui.platform.ComposeView
+                    android:id="@+id/virtual_mouse_compose_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal|bottom" />
+
+
+
             </FrameLayout>
 
             <!--A View containing helpful tips will be dynamically inserted here for new users -->

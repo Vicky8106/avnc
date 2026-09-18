@@ -18,7 +18,11 @@ import android.view.PointerIcon
 import android.view.View
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
+import androidx.lifecycle.lifecycleScope
+import com.gaurav.avnc.ui.vnc.VncActivity
+import com.gaurav.avnc.util.getClipboardText
 import com.gaurav.avnc.viewmodel.VncViewModel
+import kotlinx.coroutines.launch
 
 /**
  * This is a simple, transparent view to handle input events.
@@ -34,6 +38,30 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
     inner class InputConnection : BaseInputConnection(this, false) {
         override fun sendKeyEvent(event: KeyEvent): Boolean {
             return inputHandler?.onKeyEvent(event) == true || super.sendKeyEvent(event)
+        }
+
+        override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
+            if (!text.isNullOrEmpty()) {
+                val str = text.toString()
+                (context as? VncActivity)?.sendTextToServer(str)
+                return true
+            }
+            return super.commitText(text, newCursorPosition)
+        }
+
+        override fun performContextMenuAction(id: Int): Boolean {
+            if (id == android.R.id.paste) {
+                (context as? VncActivity)?.let { activity ->
+                    activity.lifecycleScope.launch {
+                        val clip = getClipboardText(activity)
+                        if (!clip.isNullOrEmpty()) {
+                            activity.sendTextToServer(clip)
+                        }
+                    }
+                }
+                return true
+            }
+            return super.performContextMenuAction(id)
         }
     }
 

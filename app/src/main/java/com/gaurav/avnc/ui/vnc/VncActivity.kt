@@ -72,6 +72,7 @@ class VncActivity : AppCompatActivity() {
     lateinit var binding: ActivityVncBinding
     private val inputHandler = InputHandler()
     val virtualKeys by lazy { VirtualKeys(this, inputHandler) }
+    val virtualMouse by lazy { VirtualMouse(this) }
     val toolbar by lazy { Toolbar(this) }
     private val serverUnlockPrompt = DeviceAuthPrompt(this)
     private val layoutManager by lazy { LayoutManager(this) }
@@ -99,6 +100,10 @@ class VncActivity : AppCompatActivity() {
         binding.frameView.initialize(viewModel)
         binding.inputView.initialize(viewModel, inputHandler)
         viewModel.frameViewRef = WeakReference(binding.frameView)
+
+        binding.virtualMouseComposeView.setContent {
+            VirtualMouseOverlay(virtualMouse = virtualMouse)
+        }
 
         setupLayout()
         setupNoVideoOverlay()
@@ -135,12 +140,17 @@ class VncActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
+        virtualMouse.hide()
         virtualKeys.releaseMetaKeys()
         binding.frameView.onPause()
         if (viewModel.pref.viewer.pauseUpdatesInBackground)
             viewModel.setFrameBufferUpdatesPaused(true)
         wasConnectedWhenActivityStopped = viewModel.connected
         wasKeyboardVisibleWhenActivityStopped = isKeyboardVisible(binding.inputView)
+    }
+
+    fun sendTextToServer(text: String) {
+        virtualKeys.sendTextToServer(text)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
