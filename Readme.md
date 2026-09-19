@@ -10,6 +10,8 @@
 ---
 
 ### Highlights & New Features (v1.7.0)
+- **Full Android Keyboard Support (Enter, Space, Backspace, Tab, Special Keys):** Soft keyboards (Gboard, Samsung Keyboard, etc.) now have dedicated handlers for Enter (`\n`, `performEditorAction`), Space, Tab, Backspace (`deleteSurroundingText`), and direct single-character dispatch for all special symbols (`!@#$%^&*()_+-=[]{}|;':",.<>?/~`). Keystrokes are held for 18ms so server BMCs never drop inputs.
+- **Immediate Post-Paste Enter & Key Responsiveness:** Tightened paste deduplication window so pressing Enter or typing immediately after copy-pasting is never swallowed or delayed.
 - **BMC / IPMI KVM Hardware-Calibrated Paste Timing:** Calibrated key press duration (18ms) and pacing delay (22ms) to align precisely with physical server Baseboard Management Controller (BMC) USB HID polling cadences (~10–16ms). Completely eliminates USB buffer overflows, dropped keystrokes, and out-of-order execution during long pastes (tested up to 1,000 characters).
 - **Elimination of Synthetic Shift Injection (No More Stuck Caps / Lost Spaces):** Native RFB keysyms are sent directly without artificial `Shift_L` injection. The BMC firmware automatically sets USB HID modifier flags for uppercase keysyms, preventing the remote controller from missing release packets and leaving hardware Shift latched down.
 - **Guaranteed Modifier Cleanup & Instant Unstick:** Paste streams are wrapped with guaranteed `finally { releaseAllModifiers() }`, sending individual release packets for Left/Right Shift, Ctrl, Alt, Meta, Caps Lock, and Spacebar. Untoggling any modifier key (Caps, Shift, Ctrl, Alt) in Virtual Keys immediately forces all remote hardware modifiers to release.
