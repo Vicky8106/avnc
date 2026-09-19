@@ -283,11 +283,18 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
     private fun initToggleKey(key: ToggleButton, keyCode: Int) {
         key.setOnCheckedChangeListener { _, isChecked ->
             sendKey(keyCode, isChecked)
-            if (!isChecked) lockedToggleKeys.remove(key)
+            if (!isChecked) {
+                lockedToggleKeys.remove(key)
+                viewModel.messenger?.releaseAllModifiers()
+            }
         }
         key.setOnLongClickListener {
             key.toggle()
-            if (key.isChecked) lockedToggleKeys.add(key)
+            if (key.isChecked) {
+                lockedToggleKeys.add(key)
+            } else {
+                viewModel.messenger?.releaseAllModifiers()
+            }
             true
         }
 
@@ -352,15 +359,6 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         textBox.setText("")
     }
 
-    private fun requiresShift(codePoint: Int): Boolean {
-        if (codePoint in 'A'.code..'Z'.code) return true
-        return when (codePoint.toChar()) {
-            '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
-            '_', '+', '{', '}', '|', ':', '"', '<', '>', '?' -> true
-            else -> false
-        }
-    }
-
     fun sendTextToServer(text: String) {
         if (text.isEmpty()) return
         val clampedText = if (text.length > 1000) text.substring(0, 1000) else text
@@ -389,27 +387,34 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         // 2. Stream individual keysyms directly to remote VNC server using native RFB keysyms
         sendTextJob = activity.lifecycleScope.launch(Dispatchers.Default) {
             val messenger = viewModel.messenger ?: return@launch
-            val pacingDelay = if (sanitizedText.length > 100) 12L else 16L
+            // Standard USB HID polling intervals on physical BMCs/servers are 10-16ms.
+            // 22ms pacing between key release and next key press ensures the remote controller
+            // registers the key release and prevents buffer overflow.
+            val pacingDelay = 22L
 
-            var idx = 0
-            while (idx < sanitizedText.length) {
-                if (!isActive) break
-                val codePoint = sanitizedText.codePointAt(idx)
-                idx += Character.charCount(codePoint)
+            try {
+                var idx = 0
+                while (idx < sanitizedText.length) {
+                    if (!isActive) break
+                    val codePoint = sanitizedText.codePointAt(idx)
+                    idx += Character.charCount(codePoint)
 
-                val withShift = requiresShift(codePoint)
+                    val keySym = when (codePoint) {
+                        '\t'.code -> XKeySym.XK_Tab
+                        '\b'.code -> XKeySym.XK_BackSpace
+                        else -> {
+                            val legacy = XKeySymUnicode.getLegacyKeySymForUnicodeChar(codePoint)
+                            if (legacy != 0) legacy else XKeySymUnicode.getKeySymForUnicodeChar(codePoint)
+                        }
+                    }
 
-                val keySym = when (codePoint) {
-                    '\t'.code -> XKeySym.XK_Tab
-                    '\b'.code -> XKeySym.XK_BackSpace
-                    else -> {
-                        val legacy = XKeySymUnicode.getLegacyKeySymForUnicodeChar(codePoint)
-                        if (legacy != 0) legacy else XKeySymUnicode.getKeySymForUnicodeChar(codePoint)
+                    if (keySym != 0) {
+                        messenger.sendKeyPress(keySym, 0, pressDurationMs = 18L)
+                        delay(pacingDelay)
                     }
                 }
-
-                messenger.sendKeyPress(keySym, 0, 6L, withShift = withShift)
-                delay(pacingDelay)
+            } finally {
+                messenger.releaseAllModifiers()
             }
         }
     }

@@ -85,12 +85,8 @@ class Messenger(private val client: VncClient) {
         return execute { client.sendKeyEvent(keySym, xtCode, isDown) }
     }
 
-    fun sendKeyPress(keySym: Int, xtCode: Int = 0, pressDurationMs: Long = 6L, withShift: Boolean = false): Boolean {
+    fun sendKeyPress(keySym: Int, xtCode: Int = 0, pressDurationMs: Long = 18L): Boolean {
         return execute {
-            if (withShift) {
-                client.sendKeyEvent(XKeySym.XK_Shift_L, 0, true)
-                try { Thread.sleep(2) } catch (_: InterruptedException) {}
-            }
             client.sendKeyEvent(keySym, xtCode, true)
             if (pressDurationMs > 0) {
                 try {
@@ -99,23 +95,30 @@ class Messenger(private val client: VncClient) {
                 }
             }
             client.sendKeyEvent(keySym, xtCode, false)
-            if (withShift) {
-                try { Thread.sleep(2) } catch (_: InterruptedException) {}
-                client.sendKeyEvent(XKeySym.XK_Shift_L, 0, false)
-            }
         }
     }
 
     fun releaseAllModifiers() {
         execute {
-            client.sendKeyEvent(XKeySym.XK_Shift_L, 0, false)
-            client.sendKeyEvent(XKeySym.XK_Shift_R, 0, false)
-            client.sendKeyEvent(XKeySym.XK_Control_L, 0, false)
-            client.sendKeyEvent(XKeySym.XK_Control_R, 0, false)
-            client.sendKeyEvent(XKeySym.XK_Alt_L, 0, false)
-            client.sendKeyEvent(XKeySym.XK_Alt_R, 0, false)
-            client.sendKeyEvent(XKeySym.XK_Meta_L, 0, false)
-            client.sendKeyEvent(XKeySym.XK_Meta_R, 0, false)
+            val modifiers = intArrayOf(
+                XKeySym.XK_Shift_L,
+                XKeySym.XK_Shift_R,
+                XKeySym.XK_Control_L,
+                XKeySym.XK_Control_R,
+                XKeySym.XK_Alt_L,
+                XKeySym.XK_Alt_R,
+                XKeySym.XK_Meta_L,
+                XKeySym.XK_Meta_R,
+                XKeySym.XK_Caps_Lock,
+                XKeySym.XK_space
+            )
+            for (sym in modifiers) {
+                client.sendKeyEvent(sym, 0, false)
+                try {
+                    Thread.sleep(3)
+                } catch (_: InterruptedException) {
+                }
+            }
         }
     }
 
