@@ -4,19 +4,19 @@
 <p align="center"> <b>VNC android free</b> is a high-performance, open-source VNC client for Android. </p>
 
 ### 📥 Download APK
-* **[Download Latest VNC-android-free.apk (v1.6.0)](https://github.com/Vicky8106/avnc/releases/download/v1.6.0/VNC-android-free.apk)**
+* **[Download Latest VNC-android-free.apk (v1.7.0)](https://github.com/Vicky8106/avnc/releases/download/v1.7.0/VNC-android-free.apk)**
 * Repository file: [`release/VNC-android-free.apk`](release/VNC-android-free.apk)
 
 ---
 
-### Highlights & New Features
+### Highlights & New Features (v1.7.0)
+- **BMC / IPMI KVM Hardware-Calibrated Paste Timing:** Calibrated key press duration (18ms) and pacing delay (22ms) to align precisely with physical server Baseboard Management Controller (BMC) USB HID polling cadences (~10–16ms). Completely eliminates USB buffer overflows, dropped keystrokes, and out-of-order execution during long pastes (tested up to 1,000 characters).
+- **Elimination of Synthetic Shift Injection (No More Stuck Caps / Lost Spaces):** Native RFB keysyms are sent directly without artificial `Shift_L` injection. The BMC firmware automatically sets USB HID modifier flags for uppercase keysyms, preventing the remote controller from missing release packets and leaving hardware Shift latched down.
+- **Guaranteed Modifier Cleanup & Instant Unstick:** Paste streams are wrapped with guaranteed `finally { releaseAllModifiers() }`, sending individual release packets for Left/Right Shift, Ctrl, Alt, Meta, Caps Lock, and Spacebar. Untoggling any modifier key (Caps, Shift, Ctrl, Alt) in Virtual Keys immediately forces all remote hardware modifiers to release.
 - **20% Transparent Virtual Mouse Overlay:** The entire virtual mouse interface (both the floating circular action button and the expanded control bar) has 80% opacity (`alpha = 0.80f`), allowing you to see the underlying remote desktop clearly while using mouse controls.
-- **Clean Single Cross ("✕") Button:** Removed the redundant left cross button; a single, clear circular minimize button is located at the right end of the bar to collapse it back into the floating bubble.
-- **Definitive Fix for Automatic Enter on Long Copy-Paste:** Embedded line breaks (`\r\n`, `\r`, `\n`, etc.) within pasted text are now sanitized to spaces during paste streaming. This guarantees that wrapped commands, long strings, or multi-line text (up to 1,000 characters) NEVER trigger a premature `Return`/Enter key in the middle of pasting, allowing the entire text to paste completely and safely without executing early.
-- **Enhanced IME & Context Menu Deduplication:** Extended paste deduplication window and configured `IME_ACTION_NONE` so soft keyboards do not interrupt ongoing paste streams with synthetic Enter actions.
-- **Fixed Paste Gibberish & Caps Lock Locking:** Uppercase letters and shifted symbols (`~!@#$%^&*()_+{}|:"<>?`) are sent with atomic `Shift` keysym wrapping, preventing the remote VNC server from toggling Caps Lock. Added `releaseAllModifiers()` before text streaming, and added a dedicated **Caps** button in Virtual Keys to toggle/unstick remote Caps Lock.
+- **Clean Single Cross ("✕") Button:** A single circular minimize button at the right end of the mouse bar collapses it back into the floating bubble.
+- **Definitive Fix for Automatic Enter on Long Copy-Paste:** Embedded line breaks (`\r\n`, `\r`, `\n`) within pasted text are sanitized to spaces during paste streaming so commands or input fields never execute prematurely.
 - **Expandable Floating Mouse (RealVNC Style):** On-screen Floating Action Button (FAB) that expands into full mouse options (Left Click, Middle Click, Scroll Up, Scroll Down, Right Click, Keyboard trigger).
-- **Unified Mouse & Keyboard:** Opening the keyboard automatically surfaces the mouse controls for seamless navigation.
 
 
 ### Features
