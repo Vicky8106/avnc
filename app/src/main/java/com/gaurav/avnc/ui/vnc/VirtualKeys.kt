@@ -8,90 +8,99 @@
 
 package com.gaurav.avnc.ui.vnc
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.os.SystemClock
 import android.util.AttributeSet
 import android.util.Log
 import android.view.GestureDetector
 import android.view.GestureDetector.SimpleOnGestureListener
 import android.view.Gravity
-import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
-import android.view.View.MeasureSpec
-import android.view.ViewConfiguration
-import android.view.ViewGroup
 import android.widget.Button
-import android.widget.EditText
 import android.widget.GridLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.ToggleButton
 import androidx.appcompat.widget.AppCompatEditText
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat.Type
-import androidx.core.view.isVisible
-import androidx.viewpager.widget.PagerAdapter
-import androidx.viewpager.widget.ViewPager
+import androidx.lifecycle.lifecycleScope
 import com.gaurav.avnc.R
-import com.gaurav.avnc.databinding.VirtualKeysBinding
 import com.gaurav.avnc.ui.vnc.input.InputHandler
 import com.gaurav.avnc.util.AppPreferences
-import com.gaurav.avnc.util.addOnGlobalLayoutListener
+import com.gaurav.avnc.util.getClipboardText
 import com.gaurav.avnc.util.isTrue
 import com.gaurav.avnc.util.toggleKeyboard
-import com.gaurav.avnc.util.getClipboardText
 import com.gaurav.avnc.vnc.XKeySym
 import com.gaurav.avnc.vnc.XKeySymUnicode
-import android.view.inputmethod.EditorInfo
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlin.math.min
 import kotlin.math.sign
-
 
 /**
  * Virtual keys allow the user to input keys which are not normally found on
  * keyboards but can be useful for controlling remote server.
  *
- * This class manages the inflation & visibility of virtual keys.
+ * This class manages the state and actions of virtual keys, rendered via Jetpack Compose.
  */
 class VirtualKeys(private val activity: VncActivity, private val inputHandler: InputHandler) {
 
-    private val viewModel = activity.viewModel
-    private val pref = activity.viewModel.pref
-    private val inputView = activity.binding.inputView
-    private val stub = activity.binding.virtualKeysStub
-    private val toggleKeys = mutableSetOf<ToggleButton>()
-    private val lockedToggleKeys = mutableSetOf<ToggleButton>()
-    private val keyCharMap by lazy { KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD) }
+    val viewModel = activity.viewModel
+    val pref = activity.viewModel.pref
+    private val inputView get() = activity.binding.inputView
+
+    val isVisibleState = mutableStateOf(false)
+    val isTextModeState = mutableStateOf(false)
+    val textInputState = mutableStateOf("")
+
+    val activeToggleKeys = mutableStateMapOf<VirtualKey, Boolean>()
+    val lockedToggleKeys = mutableStateMapOf<VirtualKey, Boolean>()
+
     private var openedWithKb = false
     private var closedByPiPMode = false
+    private var isInitialized = false
+    private var sendTextJob: Job? = null
 
-    val container: View? get() = stub.root
+    val container: View? get() = runCatching { activity.binding.virtualKeysComposeView }.getOrNull()
+    val isVisible: Boolean get() = isVisibleState.value
+
+    fun initialize() {
+        if (isInitialized) return
+        isInitialized = true
+        isTextModeState.value = pref.runInfo.virtualKeysTextBoxVisible
+        inputHandler.onAfterKeyEventListeners += ::onAfterKeyEvent
+        viewModel.inPiPMode.observe(activity) { onPiPModeChanged(it) }
+    }
 
     fun show(saveVisibility: Boolean = false) {
-        init()
+        initialize()
+        isVisibleState.value = true
         container?.visibility = View.VISIBLE
         if (saveVisibility) pref.runInfo.showVirtualKeys = true
     }
 
     fun hide(saveVisibility: Boolean = false) {
+        isVisibleState.value = false
         container?.visibility = View.GONE
-        openedWithKb = false //Reset flag
+        openedWithKb = false
         if (saveVisibility) pref.runInfo.showVirtualKeys = false
     }
 
+    fun setTextMode(enabled: Boolean) {
+        isTextModeState.value = enabled
+        pref.runInfo.virtualKeysTextBoxVisible = enabled
+        if (!enabled) {
+            inputView.requestFocus()
+        }
+    }
+
     fun onKeyboardOpen() {
-        if (pref.input.vkOpenWithKeyboard && container?.visibility != View.VISIBLE) {
+        if (pref.input.vkOpenWithKeyboard && !isVisible) {
             show()
             openedWithKb = true
         }
@@ -102,41 +111,52 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
             hide()
             openedWithKb = false
         }
-
-        // Scenario: User uses the TextBox to send text to server, and hides the keyboard. User
-        // wants to end the session now, so he swipes-up from bottom to bring up the nav bar, but
-        // the TextBox also sees that swipe-up and it shows the keyboard. Now tap on Back navigation
-        // button will hide the keyboard instead of ending the session. User must switch away from
-        // text-page to break this loop. So we clear the focus here to avoid this issue.
-        (stub.binding as? VirtualKeysBinding)?.textBox?.let { if (it.isFocused) it.clearFocus() }
-    }
-
-    fun onConnected() {
-        if (pref.runInfo.showVirtualKeys && !viewModel.inPiPMode.isTrue)
-            show()
-    }
-
-    fun releaseMetaKeys() {
-        toggleKeys.forEach {
-            if (it.isChecked)
-                it.isChecked = false
+        if (isTextModeState.value) {
+            inputView.requestFocus()
         }
     }
 
+    fun onConnected() {
+        if (pref.runInfo.showVirtualKeys && !viewModel.inPiPMode.isTrue) {
+            show()
+        }
+    }
+
+    fun toggleKeyboard() {
+        toggleKeyboard(inputView)
+    }
+
+    fun releaseMetaKeys() {
+        val activeKeys = activeToggleKeys.filter { it.value }.keys.toList()
+        activeToggleKeys.clear()
+        lockedToggleKeys.clear()
+        activeKeys.forEach { vk ->
+            vk.keyCode?.let { sendKey(it, false) }
+        }
+        viewModel.messenger?.releaseAllModifiers()
+    }
+
     private fun releaseUnlockedMetaKeys() {
-        toggleKeys.forEach {
-            if (it.isChecked && !lockedToggleKeys.contains(it))
-                it.isChecked = false
+        val unlockedKeys = activeToggleKeys.filter { it.value && lockedToggleKeys[it.key] != true }.keys.toList()
+        if (unlockedKeys.isNotEmpty()) {
+            unlockedKeys.forEach { vk ->
+                activeToggleKeys[vk] = false
+                vk.keyCode?.let { sendKey(it, false) }
+            }
+            if (activeToggleKeys.values.none { it }) {
+                viewModel.messenger?.releaseAllModifiers()
+            }
         }
     }
 
     private fun onAfterKeyEvent(event: KeyEvent) {
-        if (event.action == KeyEvent.ACTION_UP && !KeyEvent.isModifierKey(event.keyCode))
+        if (event.action == KeyEvent.ACTION_UP && !KeyEvent.isModifierKey(event.keyCode)) {
             releaseUnlockedMetaKeys()
+        }
     }
 
     private fun onPiPModeChanged(inPiPMode: Boolean) {
-        if (inPiPMode && container?.isVisible == true) {
+        if (inPiPMode && isVisible) {
             hide()
             closedByPiPMode = true
         } else if (!inPiPMode && closedByPiPMode) {
@@ -145,218 +165,61 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         }
     }
 
-    private fun init() {
-        if (stub.isInflated)
+    fun onToggleKeyClick(vk: VirtualKey) {
+        val keyCode = vk.keyCode ?: return
+        if ((keyCode == KeyEvent.KEYCODE_META_LEFT || keyCode == KeyEvent.KEYCODE_META_RIGHT) && pref.input.vkUseSuperWithSingleTap) {
+            sendKey(keyCode)
             return
-
-        stub.viewStub?.inflate()
-        val binding = stub.binding as VirtualKeysBinding
-        initTextPage(binding)
-        initKeys(binding)
-        initPager(binding)
-        inputHandler.onAfterKeyEventListeners += ::onAfterKeyEvent
-        viewModel.inPiPMode.observe(activity) { onPiPModeChanged(it) }
-    }
-
-    /**
-     * To keep everything in single XML layout file, things are done in a slightly weird way.
-     * Both keys & text pages are initially attached to temporary View. After inflation, they
-     * are detached and passed onto ViewPager adapter. Adapter will insert them at proper place.
-     */
-    private fun initPager(binding: VirtualKeysBinding) {
-        val root = binding.root
-        val keys = binding.keys
-        val pager = binding.pager
-        val pages = listOf(binding.keysPage, binding.textPage)
-
-        binding.tmpPageHost.apply {
-            removeAllViews()
-            (parent as ViewGroup).removeView(this)
         }
 
-        // Setup pager
-        pager.offscreenPageLimit = pages.size
-        pager.adapter = object : PagerAdapter() {
-            override fun getCount() = pages.size
-            override fun isViewFromObject(view: View, obj: Any) = (view === obj)
-            override fun instantiateItem(container: ViewGroup, position: Int): Any {
-                pages[position].let {
-                    container.addView(it)
-                    return it
-                }
-            }
-
-            override fun destroyItem(container: ViewGroup, position: Int, obj: Any) {
-                container.removeView(obj as View)
-            }
-        }
-        pager.addOnPageChangeListener(object : ViewPager.SimpleOnPageChangeListener() {
-            val textPageIndex = pages.indexOf(binding.textPage)
-            override fun onPageSelected(position: Int) {
-                if (ViewCompat.getRootWindowInsets(root)?.isVisible(Type.ime()) == true) {
-                    if (position == textPageIndex) binding.textBox.requestFocus()
-                    else inputView.requestFocus()
-                }
-                pref.runInfo.virtualKeysTextBoxVisible = (position == textPageIndex)
-            }
-        })
-
-        // Setup Layout. Keys grid is the primary View used for deciding size of Virtual keys.
-        // All keys are shown if screen is wide enough. Otherwise width is limited to FrameView,
-        // and HorizontalScrollView is relied upon to access all keys.
-        // NOTE: Paddings in root/pager view is NOT handled by this code.
-
-        // Start with something sane
-        MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED).let { keys.measure(it, it) }
-        root.layoutParams = root.layoutParams.apply { width = keys.measuredWidth; height = keys.measuredHeight }
-
-        // Update size after layout changes
-        addOnGlobalLayoutListener(activity, keys) {
-            val w = min(keys.width, inputView.width)
-            val h = keys.height
-            if (w > 0 && h > 0 && (root.width != w || root.height != h))
-                root.layoutParams = root.layoutParams.apply { width = w; height = h }
-        }
-
-        // Switch to text page if it was active last time
-        if (pref.runInfo.virtualKeysTextBoxVisible)
-            pager.setCurrentItem(pages.indexOf(binding.textPage), false)
-    }
-
-
-    private fun initTextPage(binding: VirtualKeysBinding) {
-        binding.textPageBackBtn.setOnClickListener {
-            binding.pager.setCurrentItem(0, true)
-        }
-        binding.textBox.setOnEditorActionListener { _, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_SEND ||
-                actionId == EditorInfo.IME_ACTION_DONE ||
-                (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)
-            ) {
-                handleTextBoxAction(binding.textBox)
-                true
-            } else {
-                false
-            }
-        }
-        binding.textBox.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) inputView.requestFocus()
-        }
-        binding.textBox.onTextCopyListener = {
-            viewModel.sendClipboardText()
-        }
-        binding.textPageSendBtn.setOnClickListener {
-            handleTextBoxAction(binding.textBox)
-        }
-        binding.textPagePasteBtn.setOnClickListener {
-            activity.lifecycleScope.launch {
-                val clipText = getClipboardText(activity)
-                if (!clipText.isNullOrEmpty()) {
-                    val clamped = if (clipText.length > 1000) clipText.substring(0, 1000) else clipText
-                    binding.textBox.setText(clamped)
-                    binding.textBox.setSelection(clamped.length)
-                }
-            }
-        }
-    }
-
-    private fun initKeys(binding: VirtualKeysBinding) {
-        binding.keys.rowCount = pref.input.vkRowCount
-        VirtualKeyLayoutConfig.getLayout(pref).forEach { vk ->
-            val view = VirtualKeyViewFactory.create(binding.root.context, vk)
-            binding.keys.addView(view)
-
-            if (vk == VirtualKey.ToggleKeyboard) {
-                view.setOnClickListener { toggleKeyboard(inputView) }
-            } else if (vk == VirtualKey.CloseKeys) {
-                view.setOnClickListener { hide(true) }
-            } else if (vk.keyCode != null) {
-                if (view is ToggleButton)
-                    initToggleKey(view, vk.keyCode)
-                else
-                    initNormalKey(view, vk.keyCode)
-            }
-        }
-    }
-
-
-    private fun initToggleKey(key: ToggleButton, keyCode: Int) {
-        key.setOnCheckedChangeListener { _, isChecked ->
-            sendKey(keyCode, isChecked)
-            if (!isChecked) {
-                lockedToggleKeys.remove(key)
+        val isCurrentlyChecked = activeToggleKeys[vk] == true
+        if (isCurrentlyChecked) {
+            activeToggleKeys[vk] = false
+            lockedToggleKeys[vk] = false
+            sendKey(keyCode, false)
+            if (activeToggleKeys.values.none { it }) {
                 viewModel.messenger?.releaseAllModifiers()
             }
+        } else {
+            activeToggleKeys[vk] = true
+            sendKey(keyCode, true)
         }
-        key.setOnLongClickListener {
-            key.toggle()
-            if (key.isChecked) {
-                lockedToggleKeys.add(key)
-            } else {
+    }
+
+    fun onToggleKeyLongClick(vk: VirtualKey) {
+        val keyCode = vk.keyCode ?: return
+        val isLocked = lockedToggleKeys[vk] == true
+        if (isLocked) {
+            lockedToggleKeys[vk] = false
+            activeToggleKeys[vk] = false
+            sendKey(keyCode, false)
+            if (activeToggleKeys.values.none { it }) {
                 viewModel.messenger?.releaseAllModifiers()
             }
-            true
+        } else {
+            lockedToggleKeys[vk] = true
+            activeToggleKeys[vk] = true
+            sendKey(keyCode, true)
         }
-
-        if ((keyCode == KeyEvent.KEYCODE_META_LEFT || keyCode == KeyEvent.KEYCODE_META_RIGHT) && pref.input.vkUseSuperWithSingleTap)
-            key.setOnClickListener {
-                key.isChecked = true
-                key.isChecked = false
-            }
-
-        toggleKeys.add(key)
     }
 
-    private fun initNormalKey(key: View, keyCode: Int) {
-        check(key !is ToggleButton) { "use initToggleKey()" }
-        key.setOnClickListener { sendKey(keyCode) }
-        makeKeyRepeatable(key)
-    }
-
-    /**
-     * When a View is touched, we schedule a callback to to simulate a click.
-     * As long as finger stays on the view, we keep repeating this callback.
-     */
-    private fun makeKeyRepeatable(keyView: View) {
-        keyView.setOnTouchListener(object : View.OnTouchListener {
-            private var doRepeat = false
-
-            private fun repeat(v: View) {
-                if (doRepeat) {
-                    v.performClick()
-                    v.postDelayed({ repeat(v) }, ViewConfiguration.getKeyRepeatDelay().toLong())
-                }
-            }
-
-            @SuppressLint("ClickableViewAccessibility")
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        doRepeat = true
-                        v.postDelayed({ repeat(v) }, ViewConfiguration.getKeyRepeatTimeout().toLong())
-                    }
-
-                    MotionEvent.ACTION_POINTER_DOWN,
-                    MotionEvent.ACTION_UP,
-                    MotionEvent.ACTION_CANCEL -> {
-                        doRepeat = false
-                    }
-                }
-                return false
-            }
-        })
-    }
-
-    private var sendTextJob: Job? = null
-
-    private fun handleTextBoxAction(textBox: EditText) {
-        val text = textBox.text?.toString() ?: return
+    fun handleTextBoxAction(text: String) {
         if (text.isEmpty()) {
             sendKey(KeyEvent.KEYCODE_ENTER)
             return
         }
         sendTextToServer(text)
-        textBox.setText("")
+        textInputState.value = ""
+    }
+
+    fun onPasteClick() {
+        activity.lifecycleScope.launch {
+            val clipText = getClipboardText(activity)
+            if (!clipText.isNullOrEmpty()) {
+                val clamped = if (clipText.length > 1000) clipText.substring(0, 1000) else clipText
+                textInputState.value = clamped
+            }
+        }
     }
 
     fun sendTextToServer(text: String) {
@@ -418,7 +281,7 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         }
     }
 
-    private fun sendKey(keyCode: Int) {
+    fun sendKey(keyCode: Int) {
         activity.lifecycleScope.launch(Dispatchers.Default) {
             sendKey(keyCode, true)
             try {
@@ -429,7 +292,7 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
         }
     }
 
-    private fun sendKey(keyCode: Int, isDown: Boolean) {
+    fun sendKey(keyCode: Int, isDown: Boolean) {
         val action = if (isDown) KeyEvent.ACTION_DOWN else KeyEvent.ACTION_UP
         inputHandler.onVkKeyEvent(KeyEvent(action, keyCode))
     }
@@ -559,6 +422,7 @@ object VirtualKeyLayoutConfig {
 
 /**
  * Factory for creating individual key [View]s.
+ * Retained for compatibility with [com.gaurav.avnc.ui.prefs.VirtualKeysEditor].
  */
 object VirtualKeyViewFactory {
 
@@ -648,10 +512,6 @@ class VkEditText(context: Context, attributeSet: AttributeSet? = null) : AppComp
  */
 class NestableHorizontalScrollView(context: Context, attributeSet: AttributeSet? = null) :
         HorizontalScrollView(context, attributeSet) {
-    /**
-     * Direction of current horizontal scrolling.
-     * See [canScrollHorizontally].
-     */
     private var hScrollDirection = 0
     private val gestureDetector = GestureDetector(context, object : SimpleOnGestureListener() {
         override fun onDown(e: MotionEvent): Boolean {

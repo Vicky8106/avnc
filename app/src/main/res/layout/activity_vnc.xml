@@ -78,13 +78,13 @@
                     android:visibility="gone"
                     app:backgroundAlpha="@{.5}" />
 
-                <!--Virtual keys-->
-                <ViewStub
-                    android:id="@+id/virtual_keys_stub"
+                <!--Virtual keys (Jetpack Compose)-->
+                <androidx.compose.ui.platform.ComposeView
+                    android:id="@+id/virtual_keys_compose_view"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_horizontal|bottom"
-                    android:layout="@layout/virtual_keys" />
+                    android:visibility="gone" />
 
                 <!--Virtual mouse (Jetpack Compose)-->
                 <androidx.compose.ui.platform.ComposeView

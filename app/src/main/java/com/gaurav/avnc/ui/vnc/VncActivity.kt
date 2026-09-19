@@ -101,9 +101,13 @@ class VncActivity : AppCompatActivity() {
         binding.inputView.initialize(viewModel, inputHandler)
         viewModel.frameViewRef = WeakReference(binding.frameView)
 
+        binding.virtualKeysComposeView.setContent {
+            VirtualKeysOverlay(virtualKeys = virtualKeys)
+        }
         binding.virtualMouseComposeView.setContent {
             VirtualMouseOverlay(virtualMouse = virtualMouse)
         }
+        virtualKeys.initialize()
 
         setupLayout()
         setupNoVideoOverlay()
