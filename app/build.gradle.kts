@@ -45,11 +45,21 @@ android {
         getByName("androidTest").assets.directories += "$projectDir/roomSchema"
     }
 
+    signingConfigs {
+        create("persistentKey") {
+            storeFile = file("keystore.p12")
+            storePassword = "avnc_release_key"
+            keyAlias = "avnc"
+            keyPassword = "avnc_release_key"
+        }
+    }
+
     buildTypes {
 
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = " (debug)"
+            signingConfig = signingConfigs.getByName("persistentKey")
         }
 
         release {
