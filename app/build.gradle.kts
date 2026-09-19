@@ -9,13 +9,13 @@ plugins {
 }
 
 android {
-    namespace = "com.gaurav.avnc"
+    namespace = "com.vncandroid.free"
 
     compileSdk = 36
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
-        applicationId = "com.gaurav.avnc"
+        applicationId = "com.vncandroid.free"
         minSdk = 21
         targetSdk = 36
         versionCode = 53
@@ -48,21 +48,20 @@ android {
     signingConfigs {
         create("persistentKey") {
             storeFile = file("keystore.p12")
-            storePassword = "avnc_release_key"
-            keyAlias = "avnc"
-            keyPassword = "avnc_release_key"
+            storePassword = "vnc_release_key"
+            keyAlias = "vnc"
+            keyPassword = "vnc_release_key"
         }
     }
 
     buildTypes {
 
         debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = " (debug)"
             signingConfig = signingConfigs.getByName("persistentKey")
         }
 
         release {
+            signingConfig = signingConfigs.getByName("persistentKey")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

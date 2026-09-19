@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright (c) 2020  Gaurav Ujjwal.
+  ~ Copyright (c) 2026 VNC Android Free contributors.
   ~
   ~ SPDX-License-Identifier:  GPL-3.0-or-later
   ~
@@ -14,7 +14,7 @@
       for the activity in app manifest. E.g. it will be white for a Light theme.
 
       If we specify DayNight theme in manifest for startup activity, but user has selected
-      dark theme in AVNC, they may see a white flash before activity starts drawing. To
+      dark theme in VNC, they may see a white flash before activity starts drawing. To
       workaround this, we use App.SplashTheme.Dark in the manifest to get a dark window,
       but switch to main theme in Activity's onCreate().
 

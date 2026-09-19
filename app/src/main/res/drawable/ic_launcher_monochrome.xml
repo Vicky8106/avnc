@@ -1,46 +1,13 @@
-<!--
-  ~ Copyright (c) 2021  Gaurav Ujjwal.
-  ~
-  ~ SPDX-License-Identifier:  GPL-3.0-or-later
-  ~
-  ~ See COPYING.txt for more details.
-  -->
-
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:scaleX="0.5625"
-        android:scaleY="0.5625">
-        <path
-            android:fillColor="#00000000"
-            android:pathData="M76.149,73.388 L98.058,118.702"
-            android:strokeWidth="12.2257"
-            android:strokeColor="#000000"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:fillColor="#00000000"
-            android:pathData="M53.313,118.702 L76.149,73.388"
-            android:strokeWidth="12.2257"
-            android:strokeColor="#000000"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:fillColor="#00000000"
-            android:pathData="m138.69,73.295 l-22.41,45.32"
-            android:strokeWidth="12.2194"
-            android:strokeColor="#000000"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:fillColor="#00000000"
-            android:pathData="M116.28,118.615 L93.939,73.295"
-            android:strokeWidth="12.2194"
-            android:strokeColor="#000000"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-    </group>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,28 L78,28 A4,4 0 0,1 82,32 L82,62 A4,4 0 0,1 78,66 L57,66 L57,74 L66,74 A2,2 0 0,1 68,76 L68,78 L40,78 L40,76 A2,2 0 0,1 42,74 L51,74 L51,66 L30,66 A4,4 0 0,1 26,62 L26,32 A4,4 0 0,1 30,28 Z M30,32 L30,60 L78,60 L78,32 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,39 L48,54 L52,50 L56,54 L58,52 L54,48 L58,48 Z" />
 </vector>

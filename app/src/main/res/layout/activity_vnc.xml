@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-  ~ Copyright (c) 2020  Gaurav Ujjwal.
+  ~ Copyright (c) 2026 VNC Android Free contributors.
   ~
   ~ SPDX-License-Identifier:  GPL-3.0-or-later
   ~
@@ -12,11 +12,11 @@
 
     <data>
 
-        <import type="com.gaurav.avnc.viewmodel.VncViewModel.State" />
+        <import type="com.vncandroid.free.viewmodel.VncViewModel.State" />
 
         <variable
             name="viewModel"
-            type="com.gaurav.avnc.viewmodel.VncViewModel" />
+            type="com.vncandroid.free.viewmodel.VncViewModel" />
     </data>
 
     <!--
@@ -49,14 +49,14 @@
                 android:layout_height="match_parent">
 
                 <!--FrameView-->
-                <com.gaurav.avnc.ui.vnc.FrameView
+                <com.vncandroid.free.ui.vnc.FrameView
                     android:id="@+id/frame_view"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:visibility="gone"
                     android:background="@drawable/bg_frame_view" /> <!--Workaround for hole punching issues-->
 
-                <com.gaurav.avnc.ui.vnc.input.InputView
+                <com.vncandroid.free.ui.vnc.input.InputView
                     android:id="@+id/input_view"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />

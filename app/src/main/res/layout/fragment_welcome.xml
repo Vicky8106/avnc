@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-  ~ Copyright (c) 2021  Gaurav Ujjwal.
+  ~ Copyright (c) 2026 VNC Android Free contributors.
   ~
   ~ SPDX-License-Identifier:  GPL-3.0-or-later
   ~
@@ -22,14 +22,14 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_marginTop="@dimen/margin_small"
-            android:text="🎉 Welcome to AVNC v3 🎉"
+            android:text="🎉 Welcome to VNC Android Free 🎉"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Headline5" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/margin_large"
-            android:text="Disable video to use AVNC as remote control, Capture pointer for seamless experience, Use Wake-on-LAN over Internet, and much more. See what's new in version 3."
+            android:text="Disable video to use app as remote control, Capture pointer for seamless experience, Use Wake-on-LAN over Internet, and much more. See what's new in version 3."
             android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
 
         <Button
@@ -45,7 +45,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/margin_large"
-            android:text="Like using AVNC? Rate AVNC on Play Store to let us know."
+            android:text="Like using the app? Rate us on Play Store to let us know."
             android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
 
         <Button

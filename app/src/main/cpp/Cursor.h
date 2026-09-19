@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2022  Gaurav Ujjwal.
+ * Copyright (c) 2026 VNC Android Free contributors.
  *
  * SPDX-License-Identifier:  GPL-3.0-or-later
  *
  * See COPYING.txt for more details.
  */
 
-#ifndef AVNC_CURSOR_H
-#define AVNC_CURSOR_H
+#ifndef VNC_CURSOR_H
+#define VNC_CURSOR_H
 
 
 /******************************************************************************
@@ -110,4 +110,4 @@ Cursor *newCursor() {
     return cursor;
 }
 
-#endif //AVNC_CURSOR_H
+#endif //VNC_CURSOR_H

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-  ~ Copyright (c) 2020  Gaurav Ujjwal.
+  ~ Copyright (c) 2026 VNC Android Free contributors.
   ~
   ~ SPDX-License-Identifier:  GPL-3.0-or-later
   ~
@@ -14,7 +14,7 @@
 
         <variable
             name="viewModel"
-            type="com.gaurav.avnc.viewmodel.HomeViewModel" />
+            type="com.vncandroid.free.viewmodel.HomeViewModel" />
     </data>
 
     <FrameLayout
@@ -22,7 +22,7 @@
         android:layout_height="match_parent"
         android:clipChildren="false">
 
-        <com.gaurav.avnc.ui.home.ServerList
+        <com.vncandroid.free.ui.home.ServerList
             android:id="@+id/servers"
             style="@style/ServerList"
             android:layout_width="match_parent"

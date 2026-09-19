@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2022  Gaurav Ujjwal.
+ * Copyright (c) 2026 VNC Android Free contributors.
  *
  * SPDX-License-Identifier:  GPL-3.0-or-later
  *
  * See COPYING.txt for more details.
  */
 
-#ifndef AVNC_UTILITY_H
-#define AVNC_UTILITY_H
+#ifndef VNC_UTILITY_H
+#define VNC_UTILITY_H
 
 #include <stdarg.h>
 #include <netdb.h>
@@ -97,4 +97,4 @@ static const char *errnoToStr(int e) {
     }
 }
 
-#endif //AVNC_UTILITY_H
+#endif //VNC_UTILITY_H

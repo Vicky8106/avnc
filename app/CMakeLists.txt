@@ -26,7 +26,7 @@ set(ENV{ANDROID_NDK_HOME} ${ANDROID_NDK})
 ###############################################################################
 project(NativeVNC C CXX)
 
-set(AVNC_EXTERN_DIR ${PROJECT_SOURCE_DIR}/../extern)
+set(VNC_EXTERN_DIR ${PROJECT_SOURCE_DIR}/../extern)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared Libs" FORCE)
 
 ###############################################################################
@@ -34,8 +34,8 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared Libs" FORCE)
 ###############################################################################
 
 # Make sure given submodule is checked out
-macro(avnc_check_submodule name)
-    if (NOT EXISTS "${AVNC_EXTERN_DIR}/${name}/CMakeLists.txt")
+macro(vnc_check_submodule name)
+    if (NOT EXISTS "${VNC_EXTERN_DIR}/${name}/CMakeLists.txt")
         message(FATAL_ERROR "git submodule for ${name} is not initialized.
                              Please run 'git submodule update --init'.")
     endif ()
@@ -49,15 +49,15 @@ add_link_options("LINKER:$<$<NOT:$<CONFIG:Debug>>:--build-id=none>")
 ###############################################################################
 # LibVNC
 ###############################################################################
-avnc_check_submodule(libvncserver)
+vnc_check_submodule(libvncserver)
 
-set(AVNC_LIBVNC_SRC_DIR ${AVNC_EXTERN_DIR}/libvncserver)
-set(AVNC_LIBVNC_BUILD_DIR ${CMAKE_BINARY_DIR}/libvncserver)
+set(VNC_LIBVNC_SRC_DIR ${VNC_EXTERN_DIR}/libvncserver)
+set(VNC_LIBVNC_BUILD_DIR ${CMAKE_BINARY_DIR}/libvncserver)
 set(WITH_LIBSSH2 OFF CACHE BOOL "Find LibSSH" FORCE)
 
-add_subdirectory(${AVNC_LIBVNC_SRC_DIR} ${AVNC_LIBVNC_BUILD_DIR})  # (source dir, build dir)
+add_subdirectory(${VNC_LIBVNC_SRC_DIR} ${VNC_LIBVNC_BUILD_DIR})  # (source dir, build dir)
 
-include_directories(${AVNC_LIBVNC_SRC_DIR}/include ${AVNC_LIBVNC_BUILD_DIR}/include)
+include_directories(${VNC_LIBVNC_SRC_DIR}/include ${VNC_LIBVNC_BUILD_DIR}/include)
 
 
 ###############################################################################
@@ -66,9 +66,9 @@ include_directories(${AVNC_LIBVNC_SRC_DIR}/include ${AVNC_LIBVNC_BUILD_DIR}/incl
 # It contains implementation of JNI native methods, some NDK scaffolding and
 # some helpers for OpenGL ES rendering. This is the library loaded from Java.
 ###############################################################################
-set(AVNC_NATIVE_SOURCE src/main/cpp/native-vnc.cpp)
+set(VNC_NATIVE_SOURCE src/main/cpp/native-vnc.cpp)
 
-add_library(native-vnc SHARED ${AVNC_NATIVE_SOURCE})
+add_library(native-vnc SHARED ${VNC_NATIVE_SOURCE})
 
 target_link_libraries(native-vnc vncclient)
 

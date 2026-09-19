@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-  ~ Copyright (c) 2020  Gaurav Ujjwal.
+  ~ Copyright (c) 2026 VNC Android Free contributors.
   ~
   ~ SPDX-License-Identifier:  GPL-3.0-or-later
   ~
@@ -14,10 +14,10 @@
 
         <variable
             name="viewModel"
-            type="com.gaurav.avnc.viewmodel.EditorViewModel" />
+            type="com.vncandroid.free.viewmodel.EditorViewModel" />
     </data>
 
-    <com.gaurav.avnc.util.EdgeToEdgeWrapperLayout
+    <com.vncandroid.free.util.EdgeToEdgeWrapperLayout
         android:id="@+id/edge_to_edge_wrapper"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -282,7 +282,7 @@
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="@id/gesture_style" />
 
-                    <com.gaurav.avnc.util.SpinnerEx
+                    <com.vncandroid.free.util.SpinnerEx
                         android:id="@+id/gesture_style"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -307,7 +307,7 @@
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="@id/screen_orientation" />
 
-                    <com.gaurav.avnc.util.SpinnerEx
+                    <com.vncandroid.free.util.SpinnerEx
                         android:id="@+id/screen_orientation"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -334,7 +334,7 @@
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="@id/security" />
 
-                    <com.gaurav.avnc.util.SpinnerEx
+                    <com.vncandroid.free.util.SpinnerEx
                         android:id="@+id/security"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -528,5 +528,5 @@
                     android:text="@string/title_save" />
             </com.google.android.material.bottomappbar.BottomAppBar>
         </LinearLayout>
-    </com.gaurav.avnc.util.EdgeToEdgeWrapperLayout>
+    </com.vncandroid.free.util.EdgeToEdgeWrapperLayout>
 </layout>

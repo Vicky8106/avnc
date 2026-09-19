@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright (c) 2020  Gaurav Ujjwal.
+  ~ Copyright (c) 2026 VNC Android Free contributors.
   ~
   ~ SPDX-License-Identifier:  GPL-3.0-or-later
   ~
@@ -10,7 +10,7 @@
     app:title="@string/pref_tools">
 
     <Preference
-        app:fragment="com.gaurav.avnc.ui.prefs.ImportExportFragment"
+        app:fragment="com.vncandroid.free.ui.prefs.ImportExportFragment"
         app:title="@string/pref_import_export" />
 
     <PreferenceCategory
@@ -18,15 +18,15 @@
         app:title="@string/pref_debugging">
 
         <Preference
-            app:fragment="com.gaurav.avnc.ui.prefs.LogsFragment"
+            app:fragment="com.vncandroid.free.ui.prefs.LogsFragment"
             app:title="@string/pref_logs" />
 
         <Preference
-            app:fragment="com.gaurav.avnc.ui.prefs.TouchTestFragment"
+            app:fragment="com.vncandroid.free.ui.prefs.TouchTestFragment"
             app:title="@string/pref_touch_test" />
 
         <Preference
-            app:fragment="com.gaurav.avnc.ui.prefs.KeyTestFragment"
+            app:fragment="com.vncandroid.free.ui.prefs.KeyTestFragment"
             app:title="@string/pref_key_test" />
     </PreferenceCategory>
 </PreferenceScreen>

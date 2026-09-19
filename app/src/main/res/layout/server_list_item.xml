@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-  ~ Copyright (c) 2020  Gaurav Ujjwal.
+  ~ Copyright (c) 2026 VNC Android Free contributors.
   ~
   ~ SPDX-License-Identifier:  GPL-3.0-or-later
   ~
@@ -12,11 +12,11 @@
 
     <data>
 
-        <import type="com.gaurav.avnc.model.ServerProfile" />
+        <import type="com.vncandroid.free.model.ServerProfile" />
 
         <variable
             name="profile"
-            type="com.gaurav.avnc.model.ServerProfile" />
+            type="com.vncandroid.free.model.ServerProfile" />
     </data>
 
     <com.google.android.material.card.MaterialCardView
@@ -104,7 +104,7 @@
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <com.gaurav.avnc.ui.home.IndicatorView
+        <com.vncandroid.free.ui.home.IndicatorView
             android:id="@+id/indicator"
             android:layout_width="10dp"
             android:layout_height="10dp"

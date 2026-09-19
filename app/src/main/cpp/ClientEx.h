@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2022  Gaurav Ujjwal.
+ * Copyright (c) 2026 VNC Android Free contributors.
  *
  * SPDX-License-Identifier:  GPL-3.0-or-later
  *
  * See COPYING.txt for more details.
  */
 
-#ifndef AVNC_CLIENTEX_H
-#define AVNC_CLIENTEX_H
+#ifndef VNC_CLIENTEX_H
+#define VNC_CLIENTEX_H
 
 #include <jni.h>
 #include "Cursor.h"
@@ -84,4 +84,4 @@ void freeClientExtension(rfbClient *client) {
     }
 }
 
-#endif //AVNC_CLIENTEX_H
+#endif //VNC_CLIENTEX_H

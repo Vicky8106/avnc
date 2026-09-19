@@ -1,0 +1,560 @@
+/*
+ * Copyright (c) 2026 VNC Android Free contributors.
+ *
+ * SPDX-License-Identifier:  GPL-3.0-or-later
+ *
+ * See COPYING.txt for more details.
+ */
+
+package com.vncandroid.free.ui.vnc
+
+import android.content.Intent
+import android.view.InputDevice
+import android.view.KeyEvent
+import androidx.core.content.edit
+import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.assertion.ViewAssertions.doesNotExist
+import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.contrib.DrawerActions
+import androidx.test.espresso.matcher.ViewMatchers.isChecked
+import androidx.test.espresso.matcher.ViewMatchers.isNotChecked
+import androidx.test.espresso.matcher.ViewMatchers.withContentDescription
+import androidx.test.espresso.matcher.ViewMatchers.withHint
+import androidx.test.espresso.matcher.ViewMatchers.withId
+import androidx.test.espresso.matcher.ViewMatchers.withSubstring
+import androidx.test.espresso.matcher.ViewMatchers.withText
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.SdkSuppress
+import com.vncandroid.free.BiometricMocking
+import com.vncandroid.free.CleanPrefsRule
+import com.vncandroid.free.EmptyDatabaseRule
+import com.vncandroid.free.ProgressAssertion
+import com.vncandroid.free.R
+import com.vncandroid.free.SshTunnelScenario
+import com.vncandroid.free.VncSessionScenario
+import com.vncandroid.free.VncSessionTest
+import com.vncandroid.free.checkDoesNotExist
+import com.vncandroid.free.checkIsDisplayed
+import com.vncandroid.free.checkIsNotDisplayed
+import com.vncandroid.free.checkKeyboardIsDisplayed
+import com.vncandroid.free.checkWillBeCompletelyDisplayed
+import com.vncandroid.free.checkWillBeDisplayed
+import com.vncandroid.free.checkWithTimeout
+import com.vncandroid.free.doClick
+import com.vncandroid.free.doTypeText
+import com.vncandroid.free.instrumentation
+import com.vncandroid.free.model.ServerProfile
+import com.vncandroid.free.onToast
+import com.vncandroid.free.pollingAssert
+import com.vncandroid.free.setClipboardHtml
+import com.vncandroid.free.setClipboardText
+import com.vncandroid.free.targetContext
+import com.vncandroid.free.targetPrefs
+import com.vncandroid.free.util.forgetKnownHosts
+import com.vncandroid.free.vnc.XKeySym
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkStatic
+import kotlinx.coroutines.runBlocking
+import org.apache.sshd.common.util.security.SecurityUtils
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Ignore
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class StartupTest {
+    private fun Intent.extraList() = extras?.keySet()?.map {
+        @Suppress("DEPRECATION")
+        extras?.get(it)
+    }
+
+    @Test
+    fun savedProfilesShouldBePassedByID() {
+        val profile = ServerProfile(ID = 1234, host = "example.com")
+        val intent = createVncIntent(targetContext, profile)
+        val extras = intent.extraList()
+        assertNotNull(extras)
+        assertFalse(extras!!.contains(profile))
+        assertTrue(extras.contains(profile.ID))
+    }
+
+    @Test
+    fun unsavedProfilesShouldBePassedByValue() {
+        val profile = ServerProfile(ID = 0, host = "example.com")
+        val intent = createVncIntent(targetContext, profile)
+        val extras = intent.extraList()
+        assertNotNull(extras)
+        assertTrue(extras!!.contains(profile))
+        assertFalse(extras.contains(profile.ID))
+    }
+
+    @Test
+    @SdkSuppress(maxSdkVersion = 29)
+    fun invalidProfileID() {
+        val profile = ServerProfile(ID = 12456789123, host = "example.com")
+        val intent = createVncIntent(targetContext, profile)
+        ActivityScenario.launch<VncActivity>(intent).use {
+            onToast(withText("Error: Invalid Server ID")).checkWillBeDisplayed()
+        }
+    }
+}
+
+@RunWith(AndroidJUnit4::class)
+class VncActivityTest : VncSessionTest() {
+
+    @Rule
+    @JvmField
+    val dbRule = EmptyDatabaseRule()
+
+    @Rule
+    @JvmField
+    val prefRule = CleanPrefsRule()
+
+    private fun loadProfileFromDB() = runBlocking {
+        dbRule.db.serverProfileDao.getByID(vncSession.profile.ID)
+    }
+
+
+    @Test
+    fun openKeyboard() {
+        vncSession.run {
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.keyboard_btn)).doClick()
+            onView(withId(R.id.input_view)).checkKeyboardIsDisplayed()
+        }
+    }
+
+    @Test
+    fun textInput() {
+        val text = "abcxyzABCXYZ1234567890{}[]()`~@#$%^&*_+-=/*"
+
+        vncSession.run {
+            onView(withId(R.id.input_view)).doTypeText(text)
+        }
+
+        val sentByClient = text.toCharArray().map { it.code }.toList()
+        val receivedOnServer = vncSession.server.receivedKeyDowns.filter { it != XKeySym.XK_Shift_L }.toList()
+
+        assertEquals(sentByClient, receivedOnServer)
+    }
+
+    @Test
+    fun autoReconnectEnabled() {
+        targetPrefs.edit { putBoolean("auto_reconnect", true) }
+        try {
+            val intent = createVncIntent(targetContext, ServerProfile(host = "CentralPerk.test"))
+            ActivityScenario.launch<VncActivity>(intent).use {
+                onView(withId(R.id.auto_reconnect_progress)).checkWillBeDisplayed()
+                Thread.sleep(1500)
+                onView(withId(R.id.auto_reconnect_progress)).check(ProgressAssertion { it > 0 })
+            }
+        } finally {
+            targetPrefs.edit { putBoolean("auto_reconnect", false) }
+        }
+    }
+
+    @Test
+    fun autoReconnectDisabled() {
+        targetPrefs.edit { putBoolean("auto_reconnect", false) }
+        val intent = createVncIntent(targetContext, ServerProfile(host = "CentralPerk.test"))
+        ActivityScenario.launch<VncActivity>(intent).use {
+            onView(withId(R.id.auto_reconnect_progress)).checkIsNotDisplayed()
+            Thread.sleep(1500)
+            onView(withId(R.id.auto_reconnect_progress)).check(ProgressAssertion { it == 0 })
+        }
+    }
+
+    @Test
+    fun clientToServerClipboard() {
+        val sample = "Pivot! Pivot! Pivot! Pivot!!!"
+        setClipboardText(sample)
+        vncSession.run {
+            pollingAssert { assertEquals(sample, vncSession.server.receivedCutText) }
+        }
+    }
+
+    @Test
+    fun clientToServerClipboardWithHtmlClip() {
+        val sample = "Pivot! Pivot! Pivot! Pivot!!!"
+        setClipboardHtml(sample)
+        vncSession.run {
+            pollingAssert { assertEquals(sample, vncSession.server.receivedCutText) }
+        }
+    }
+
+    @Test
+    @SdkSuppress(minSdkVersion = 28)
+    fun remoteBackPressOnMouseBack() {
+        targetPrefs.edit { putString("mouse_back", "remote-back-press") }
+        vncSession.run {
+            vncSession.onActivity { activity ->
+                val mouseDevice = mockk<InputDevice>()
+                every { mouseDevice.supportsSource(InputDevice.SOURCE_MOUSE) } returns true
+                mockkStatic(InputDevice::getDevice) {
+                    every { InputDevice.getDevice(any()) } returns mouseDevice
+
+                    activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK))
+                }
+            }
+        }
+        assertEquals(XKeySym.XF86XK_Back, vncSession.server.receivedKeyDowns.getOrNull(0))
+    }
+
+    @Test
+    @SdkSuppress(minSdkVersion = 28)
+    fun serverUnlock() {
+        targetPrefs.edit { putBoolean("lock_saved_server", true) }
+        vncSession.saveProfileToDB(dbRule.db)
+        BiometricMocking.start()
+        vncSession.startServer()
+        vncSession.startActivity()
+
+        BiometricMocking.endWithSuccess()
+        vncSession.assertConnected()
+        vncSession.stop()
+    }
+
+    @Test
+    @SdkSuppress(minSdkVersion = 28)
+    @Ignore("Can't check the toast on API 28")
+    fun serverUnlockWithWrongBiometric() {
+        targetPrefs.edit { putBoolean("lock_saved_server", true) }
+        vncSession.saveProfileToDB(dbRule.db)
+        BiometricMocking.start()
+        vncSession.startServer()
+        vncSession.startActivity()
+
+        BiometricMocking.endWithError("Error")
+        onView(withSubstring("Could not unlock server")).checkWillBeDisplayed()
+        onView(withId(R.id.frame_view)).checkIsNotDisplayed()
+        vncSession.stop()
+    }
+
+    @Test
+    fun macOSAltCompatibility() {
+        vncSession.server.setProtocolString("RFB 003.889\n")
+        vncSession.run {
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_ALT_LEFT)
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_ALT_RIGHT)
+        }
+
+        // Alt key should be sent as Meta key
+        assertEquals(listOf(
+                XKeySym.XK_Meta_L to true,
+                XKeySym.XK_Meta_L to false,
+                XKeySym.XK_Meta_R to true,
+                XKeySym.XK_Meta_R to false,
+        ), vncSession.server.receivedKeySyms)
+    }
+
+
+    @Test
+    fun viewerHelp() {
+        VncSessionScenario().apply {
+            startServer()
+            startActivity(false)
+
+            onView(withText(R.string.msg_viewer_tips_label)).checkWillBeDisplayed()
+            onView(withText(R.string.tip_toolbar_usage)).checkIsDisplayed()
+            onView(withText(R.string.title_next)).checkIsDisplayed().doClick()
+
+            onView(withText(R.string.tip_session_end)).checkWillBeDisplayed()
+            onView(withText(R.string.title_got_it)).checkIsDisplayed().doClick()
+
+            onView(withText(R.string.msg_viewer_tips_label)).checkWithTimeout(doesNotExist())
+            assertConnected()
+            stop()
+        }
+
+        VncSessionScenario().apply {
+            startServer()
+            startActivity(false)
+            assertConnected()
+
+            // Help should not be visible now
+            onView(withText(R.string.msg_viewer_tips_label)).checkDoesNotExist()
+            stop()
+        }
+    }
+
+    /*************************** Toolbar *******************************************/
+    @Test
+    fun gestureStyleUiTouchpad() {
+        vncSession.profile.gestureStyle = "touchpad"
+        vncSession.run {
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.gesture_style_toggle)).checkWillBeDisplayed().doClick()
+            onView(withText(R.string.pref_gesture_style_touchpad))
+                    .checkWillBeDisplayed()
+                    .check(matches(isChecked()))
+        }
+    }
+
+    @Test
+    fun gestureStyleUiTouchscreen() {
+        vncSession.profile.gestureStyle = "touchscreen"
+        vncSession.run {
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.gesture_style_toggle)).checkWillBeDisplayed().doClick()
+            onView(withText(R.string.pref_gesture_style_touchscreen))
+                    .checkWillBeDisplayed()
+                    .check(matches(isChecked()))
+        }
+    }
+
+    @Test
+    fun gestureStyleChange() {
+        vncSession.saveProfileToDB(dbRule.db)
+        vncSession.run {
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.gesture_style_toggle)).checkWillBeDisplayed().doClick()
+            onView(withText(R.string.pref_gesture_style_auto)).checkWillBeDisplayed()
+            onView(withText(R.string.pref_gesture_style_auto)).check(matches(isChecked()))
+
+            // Test switching to touchpad
+            onView(withId(R.id.gesture_style_touchpad)).doClick()
+            pollingAssert { assertEquals("touchpad", loadProfileFromDB()?.gestureStyle) }
+            vncSession.onActivity { a -> assertEquals("touchpad", a.viewModel.activeGestureStyle.value) }
+        }
+    }
+
+    @Test
+    fun normalViewMode() {
+        vncSession.run {
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.view_modes_toggle)).checkWillBeDisplayed().doClick()
+            onView(withContentDescription(R.string.desc_view_mode_normal))
+                    .checkWillBeDisplayed()
+                    .check(matches(isChecked())) // Normal mode is the default
+
+            onView(withContentDescription(R.string.desc_view_mode_no_input)).check(matches(isNotChecked()))
+            onView(withContentDescription(R.string.desc_view_mode_no_video)).check(matches(isNotChecked()))
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.close())
+
+            onView(withId(R.id.frame_view)).checkIsDisplayed()
+            onView(withText(R.string.msg_video_disabled)).check(doesNotExist())
+        }
+    }
+
+    @Test
+    fun noInputMode() {
+        vncSession.saveProfileToDB(dbRule.db)
+        vncSession.run {
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.view_modes_toggle)).checkWillBeDisplayed().doClick()
+            onView(withContentDescription(R.string.desc_view_mode_no_input))
+                    .checkWillBeCompletelyDisplayed()
+                    .check(matches(isNotChecked()))
+                    .doClick()
+
+            onView(withContentDescription(R.string.desc_view_mode_normal)).check(matches(isNotChecked()))
+            onView(withContentDescription(R.string.desc_view_mode_no_input)).check(matches(isChecked()))
+            onView(withContentDescription(R.string.desc_view_mode_no_video)).check(matches(isNotChecked()))
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.close())
+
+            onView(withText(R.string.msg_video_disabled)).check(doesNotExist())
+            onView(withId(R.id.input_view)).checkIsDisplayed().doTypeText("abc")
+
+            pollingAssert { assertEquals(ServerProfile.VIEW_MODE_NO_INPUT, loadProfileFromDB()?.viewMode) }
+            vncSession.onActivity { a -> assertEquals(ServerProfile.VIEW_MODE_NO_INPUT, a.viewModel.activeViewMode.value) }
+        }
+
+        assertEquals(0, vncSession.server.receivedKeyDowns.size)
+    }
+
+    @Test
+    fun noVideoMode() {
+        vncSession.saveProfileToDB(dbRule.db)
+        vncSession.run {
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.view_modes_toggle)).checkWillBeDisplayed().doClick()
+            onView(withContentDescription(R.string.desc_view_mode_no_video))
+                    .checkWillBeCompletelyDisplayed()
+                    .check(matches(isNotChecked()))
+                    .doClick()
+
+            onView(withContentDescription(R.string.desc_view_mode_normal)).check(matches(isNotChecked()))
+            onView(withContentDescription(R.string.desc_view_mode_no_input)).check(matches(isNotChecked()))
+            onView(withContentDescription(R.string.desc_view_mode_no_video)).check(matches(isChecked()))
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.close())
+
+            onView(withText(R.string.msg_video_disabled)).checkWillBeDisplayed()
+
+            pollingAssert { assertEquals(ServerProfile.VIEW_MODE_NO_VIDEO, loadProfileFromDB()?.viewMode) }
+            vncSession.onActivity { a ->
+                assertEquals(ServerProfile.VIEW_MODE_NO_VIDEO, a.viewModel.activeViewMode.value)
+                repeat(10) {
+                    a.viewModel.refreshFrameBuffer()
+                }
+            }
+        }
+
+        // no-video mode is implemented by stopping incremental updates
+        assertEquals(1, vncSession.server.receivedIncrementalUpdateRequests)
+    }
+
+    @Test
+    fun openToolbarWithButton() {
+        targetPrefs.edit {
+            putBoolean("toolbar_open_with_button", true)
+        }
+
+        vncSession.run {
+            onView(withId(R.id.open_toolbar_btn)).checkWillBeDisplayed().doClick()
+            onView(withId(R.id.keyboard_btn)).checkWillBeDisplayed()
+            onView(withId(R.id.virtual_keys_btn)).checkIsDisplayed()
+            onView(withId(R.id.zoom_options_toggle)).checkIsDisplayed()
+        }
+    }
+}
+
+@SdkSuppress(minSdkVersion = 26) // Mina SSHD requires NIO classes
+class SshTunnelTest {
+    companion object {
+        const val USER = "Ross"
+        const val PASSWORD = "Pivot!"
+        const val KEY = """
+                        -----BEGIN OPENSSH PRIVATE KEY-----
+                        b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAaAAAABNlY2RzYS
+                        1zaGEyLW5pc3RwMjU2AAAACG5pc3RwMjU2AAAAQQSsy1odRW+GqZckvbcZ83gb57HbGeqE
+                        /PwUGZJ4nbE/hUSCKi8P84Nt4F8eXXUZNbyD1316oxhcvI46kUXijn7cAAAAqADu8ZMA7v
+                        GTAAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKzLWh1Fb4aplyS9
+                        txnzeBvnsdsZ6oT8/BQZknidsT+FRIIqLw/zg23gXx5ddRk1vIPXfXqjGFy8jjqRReKOft
+                        wAAAAgDYCqrzLv6vvAVb9hsyTpfT38eFTJfewpJjtLKMio5eAAAAAPZ2F1cmF2QGVsZWN0
+                        cm9uAQ==
+                        -----END OPENSSH PRIVATE KEY-----
+                        """
+
+        const val ENCRYPTED_KEY = """
+                        -----BEGIN OPENSSH PRIVATE KEY-----
+                        b3BlbnNzaC1rZXktdjEAAAAACmFlczI1Ni1jdHIAAAAGYmNyeXB0AAAAGAAAABBwn299AK
+                        nRIs6CuasauHZ3AAAAGAAAAAEAAABoAAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlz
+                        dHAyNTYAAABBBIWxgMc+OMzJX7ZGmluw5jWmCIHg2xrLvQFXBtPmEfi08ZyfNi+bny2R9U
+                        LD4RWmnqkW2AjnZQKbTBei7nQSKOkAAACwmuKiwE391rPtzSJBezBv4+TTKk2Eadkd/w85
+                        nROToV6IJWYWn6mG2wHrJ5OqqWnrMBj9cOph+86JFJZ8/EYeCZqgDEDsl5mbo/fIaqQ/jD
+                        1Yc2jQLCUqaTlgxZIsU6B4+m3OeqfHvCdcZZZdSpn/quPFdcO6uGdLypL8uVQ84C1pJxFf
+                        xry5mdsKdaUiC1ILpwf/+2chAA6h81E/G+RiDN8KuMNEkmbQf4xnj9IL3XE=
+                        -----END OPENSSH PRIVATE KEY-----
+                        """
+        const val ENCRYPTED_KEY_PASSWORD = "1234"
+
+        const val PKCS8_KEY = """
+                        -----BEGIN PRIVATE KEY-----
+                        MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDBimbpEtheeSyycspfn
+                        o63tyCe/jPGi1UdOZPiHeDJvuguEoQlbIjCnrvVLT/s4sp2hZANiAAQ61WOxechs
+                        9DrgZAhZVMrxDpJi8w/HgdHeRJxSPZcsjgCBRfjnWQk552zJgYIyXJZeJ3f6Ucny
+                        SW2K9yTFyJwDDCdlfpynbarSu8ffUPkTK0ozfDit3utt9mRBi1sILpc=
+                        -----END PRIVATE KEY-----
+                        """
+    }
+
+    @Before
+    fun before() {
+        forgetKnownHosts(targetContext)
+    }
+
+    @Test
+    fun sshTunnelWithPassword() {
+        SshTunnelScenario().apply {
+            setupAuthWithPassword(USER, PASSWORD)
+            start()
+            checkAndTrustHostFingerprint()
+            vncSession.assertConnected()
+            stop()
+        }
+    }
+
+    @Test
+    fun sshTunnelWithoutSavingPassword() {
+        SshTunnelScenario().apply {
+            setupAuthWithPassword(USER, PASSWORD)
+            profile.sshPassword = "" // Clear password
+            start()
+            checkAndTrustHostFingerprint()
+
+            onView(withText(R.string.title_ssh_login)).checkWillBeDisplayed()
+            onView(withHint(R.string.hint_password)).doTypeText(PASSWORD)
+            onView(withText(android.R.string.ok)).doClick()
+
+            vncSession.assertConnected()
+            stop()
+        }
+    }
+
+    @Test
+    fun sshTunnelWithKey() {
+        SshTunnelScenario().apply {
+            setupAuthWithKey(USER, KEY, null)
+            start()
+            checkAndTrustHostFingerprint()
+            vncSession.assertConnected()
+            stop()
+        }
+    }
+
+    @Test
+    fun sshTunnelWithEncryptedKey() {
+        SshTunnelScenario().apply {
+            setupAuthWithKey(USER, ENCRYPTED_KEY, ENCRYPTED_KEY_PASSWORD)
+            start()
+            checkAndTrustHostFingerprint()
+
+            onView(withText(R.string.title_unlock_private_key)).checkWillBeDisplayed()
+            onView(withHint(R.string.hint_key_password)).doTypeText(ENCRYPTED_KEY_PASSWORD)
+            onView(withText(android.R.string.ok)).doClick()
+
+            vncSession.assertConnected()
+            stop()
+        }
+
+        // Key cache test
+        // Once unlocked, password should not be asked again
+        SshTunnelScenario().apply {
+            setupAuthWithKey(USER, ENCRYPTED_KEY, ENCRYPTED_KEY_PASSWORD)
+            start()
+            vncSession.assertConnected()
+            stop()
+        }
+    }
+
+    @Test
+    fun sshTunnelWithPKCS8Key() {
+        val pubKey = PKCS8_KEY.byteInputStream().use {
+            SecurityUtils.loadKeyPairIdentities(null, null, it, null).first().public
+        }
+
+        SshTunnelScenario().apply {
+            setupAuthWithKey(USER, pubKey, PKCS8_KEY)
+            start()
+            checkAndTrustHostFingerprint()
+            vncSession.assertConnected()
+            stop()
+        }
+    }
+
+    @Test
+    fun knownHost() {
+        SshTunnelScenario().apply {
+            setupAuthWithPassword(USER, PASSWORD)
+            start()
+            checkAndTrustHostFingerprint()
+            vncSession.assertConnected()
+            stop()
+        }
+
+        SshTunnelScenario().apply {
+            setupAuthWithPassword(USER, PASSWORD)
+            start()
+            // Unknown hosts dialog should not be triggered now
+            vncSession.assertConnected()
+            stop()
+        }
+    }
+}

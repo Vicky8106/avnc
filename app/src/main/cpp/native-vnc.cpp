@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020  Gaurav Ujjwal.
+ * Copyright (c) 2026 VNC Android Free contributors.
  *
  * SPDX-License-Identifier:  GPL-3.0-or-later
  *
@@ -69,7 +69,7 @@ JNI_OnUnload(JavaVM *, void *) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_initLibrary(JNIEnv *env, jclass clazz) {
+Java_com_vncandroid_free_vnc_VncClient_initLibrary(JNIEnv *env, jclass clazz) {
     if (context.managedCls)
         context.getEnv()->DeleteGlobalRef(context.managedCls);
 
@@ -113,7 +113,7 @@ static rfbCredential *onGetCredential(rfbClient *client, int credentialType) {
 
     //Retrieve credentials
     jmethodID mid = env->GetMethodID(cls, "cbGetCredential",
-                                     "()Lcom/gaurav/avnc/vnc/UserCredential;");
+                                     "()Lcom/vncandroid/free/vnc/UserCredential;");
     jobject jCredential = env->CallObjectMethod(obj, mid);
     if (!jCredential || env->ExceptionCheck()) {
         return nullptr;
@@ -299,7 +299,7 @@ static void setCallbacks(rfbClient *client) {
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeClientCreate(JNIEnv *env, jobject thiz) {
+Java_com_vncandroid_free_vnc_VncClient_nativeClientCreate(JNIEnv *env, jobject thiz) {
     rfbClient *client = rfbGetClient(8, 3, 4);
     if (client == nullptr)
         return 0;
@@ -320,7 +320,7 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeClientCreate(JNIEnv *env, jobject thiz)
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeConfigure(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr,
+Java_com_vncandroid_free_vnc_VncClient_nativeConfigure(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr,
                                                    jint securityType, jboolean use_local_cursor, jint image_quality,
                                                    jboolean use_raw_encoding) {
     auto client = (rfbClient *) client_ptr;
@@ -344,7 +344,7 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeConfigure(JNIEnv * /*env*/, jobject /*t
     // servers. Technically, we should not have to this as VNC servers have to
     // respect whatever pixel format client prefers. But there are some wierd
     // servers which ignore pixel format sent by client. As a result, users
-    // blame AVNC for not rendering the colors properly.
+    // blame VNC client for not rendering the colors properly.
     // Note: This change affects how OpenGL Texture for framebuffer is rendered,
     // and it only works for 24 bit-per-pixel density.
     client->format.redShift = 16;
@@ -354,7 +354,7 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeConfigure(JNIEnv * /*env*/, jobject /*t
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeSetDest(JNIEnv *env, jobject /*thiz*/, jlong client_ptr,
+Java_com_vncandroid_free_vnc_VncClient_nativeSetDest(JNIEnv *env, jobject /*thiz*/, jlong client_ptr,
                                                  jstring host, jint port) {
     auto client = (rfbClient *) client_ptr;
     client->destHost = getNativeStrCopy(env, host);
@@ -363,7 +363,7 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeSetDest(JNIEnv *env, jobject /*thiz*/, 
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeInit(JNIEnv *env, jobject /*thiz*/, jlong client_ptr,
+Java_com_vncandroid_free_vnc_VncClient_nativeInit(JNIEnv *env, jobject /*thiz*/, jlong client_ptr,
                                               jstring host, jint port) {
     auto client = (rfbClient *) client_ptr;
 
@@ -379,7 +379,7 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeInit(JNIEnv *env, jobject /*thiz*/, jlo
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeCleanup(JNIEnv *env, jobject /*thiz*/,
+Java_com_vncandroid_free_vnc_VncClient_nativeCleanup(JNIEnv *env, jobject /*thiz*/,
                                                  jlong client_ptr) {
     auto client = (rfbClient *) client_ptr;
 
@@ -397,7 +397,7 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeCleanup(JNIEnv *env, jobject /*thiz*/,
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeProcessServerMessage(JNIEnv * /*env*/, jobject /*thiz*/,
+Java_com_vncandroid_free_vnc_VncClient_nativeProcessServerMessage(JNIEnv * /*env*/, jobject /*thiz*/,
                                                               jlong client_ptr) {
     auto client = (rfbClient *) client_ptr;
 
@@ -414,14 +414,14 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeProcessServerMessage(JNIEnv * /*env*/, 
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeGetLastErrorStr(JNIEnv *env, jobject/*thiz*/) {
+Java_com_vncandroid_free_vnc_VncClient_nativeGetLastErrorStr(JNIEnv *env, jobject/*thiz*/) {
     auto str = errnoToStr(errno);
     return env->NewStringUTF(str);
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeSendKeyEvent(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr,
+Java_com_vncandroid_free_vnc_VncClient_nativeSendKeyEvent(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr,
                                                       jint key_sym, jint xt_code, jboolean is_down) {
     auto client = (rfbClient *) client_ptr;
     rfbBool down = is_down ? TRUE : FALSE;
@@ -441,14 +441,14 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeSendKeyEvent(JNIEnv * /*env*/, jobject 
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeSendPointerEvent(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr,
+Java_com_vncandroid_free_vnc_VncClient_nativeSendPointerEvent(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr,
                                                           jint x, jint y, jint mask) {
     return (jboolean) SendPointerEvent((rfbClient *) client_ptr, x, y, mask);
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeSendCutText(JNIEnv *env, jobject /*thiz*/, jlong client_ptr, jbyteArray bytes,
+Java_com_vncandroid_free_vnc_VncClient_nativeSendCutText(JNIEnv *env, jobject /*thiz*/, jlong client_ptr, jbyteArray bytes,
                                                      jboolean is_utf8) {
     auto client = (rfbClient *) client_ptr;
     auto textBuffer = env->GetByteArrayElements(bytes, nullptr);
@@ -465,59 +465,59 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeSendCutText(JNIEnv *env, jobject /*thiz
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeIsUTF8CutTextSupported(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr) {
+Java_com_vncandroid_free_vnc_VncClient_nativeIsUTF8CutTextSupported(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr) {
     return (jboolean) (((rfbClient *) client_ptr)->extendedClipboardServerCapabilities != 0);
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeSetDesktopSize(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr,
+Java_com_vncandroid_free_vnc_VncClient_nativeSetDesktopSize(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr,
                                                         jint width, jint height) {
     return (jboolean) SendExtDesktopSize((rfbClient *) client_ptr, width, height);
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeRefreshFrameBuffer(JNIEnv * /*env*/, jobject /*thiz*/, jlong clientPtr) {
+Java_com_vncandroid_free_vnc_VncClient_nativeRefreshFrameBuffer(JNIEnv * /*env*/, jobject /*thiz*/, jlong clientPtr) {
     auto client = (rfbClient *) clientPtr;
     return (jboolean) SendFramebufferUpdateRequest(client, 0, 0, client->width, client->height, TRUE);
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativePauseFramebufferUpdates(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr,
+Java_com_vncandroid_free_vnc_VncClient_nativePauseFramebufferUpdates(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr,
                                                                  jboolean pause) {
     ((rfbClient *) client_ptr)->pauseFramebufferUpdates = pause;
 }
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeGetDesktopName(JNIEnv *env, jobject /*thiz*/, jlong client_ptr) {
+Java_com_vncandroid_free_vnc_VncClient_nativeGetDesktopName(JNIEnv *env, jobject /*thiz*/, jlong client_ptr) {
     auto client = (rfbClient *) client_ptr;
     return env->NewStringUTF(client->desktopName ? client->desktopName : "");
 }
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeGetWidth(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr) {
+Java_com_vncandroid_free_vnc_VncClient_nativeGetWidth(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr) {
     return ((rfbClient *) client_ptr)->width;
 }
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeGetHeight(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr) {
+Java_com_vncandroid_free_vnc_VncClient_nativeGetHeight(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr) {
     return ((rfbClient *) client_ptr)->height;
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeIsEncrypted(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr) {
+Java_com_vncandroid_free_vnc_VncClient_nativeIsEncrypted(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr) {
     return static_cast<jboolean>(((rfbClient *) client_ptr)->tlsSession ? JNI_TRUE : JNI_FALSE);
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeUploadFrameTexture(JNIEnv * /*env*/, jobject /*thiz*/,
+Java_com_vncandroid_free_vnc_VncClient_nativeUploadFrameTexture(JNIEnv * /*env*/, jobject /*thiz*/,
                                                             jlong client_ptr) {
     auto client = (rfbClient *) client_ptr;
     auto ex = getClientExtension(client);
@@ -545,7 +545,7 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeUploadFrameTexture(JNIEnv * /*env*/, jo
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_gaurav_avnc_vnc_VncClient_nativeUploadCursorTexture(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr) {
+Java_com_vncandroid_free_vnc_VncClient_nativeUploadCursorTexture(JNIEnv * /*env*/, jobject /*thiz*/, jlong client_ptr) {
 
     auto client = (rfbClient *) client_ptr;
     auto ex = getClientExtension(client);

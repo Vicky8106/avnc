@@ -4,7 +4,7 @@
 <p align="center"> <b>VNC android free</b> is a high-performance, open-source VNC client for Android. </p>
 
 ### 📥 Download APK
-* **[Download Latest VNC-android-free.apk (v1.7.0)](https://github.com/Vicky8106/avnc/releases/download/v1.7.0/VNC-android-free.apk)**
+* **[Download Latest VNC-android-free.apk (v1.7.0)](https://github.com/Vicky8106/vnc-android-free/releases/download/v1.7.0/VNC-android-free.apk)**
 * Repository file: [`release/VNC-android-free.apk`](release/VNC-android-free.apk)
 
 ---
@@ -40,8 +40,8 @@
 - Tight encoding support
 
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/com.gaurav.avnc/)
-[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Play Store" height="80">](https://play.google.com/store/apps/details?id=com.gaurav.avnc)
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/com.vncandroid.free/)
+[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Play Store" height="80">](https://play.google.com/store/apps/details?id=com.vncandroid.free)
 
 ### Screenshots
 
@@ -69,32 +69,32 @@ Tools required:
 To get started, simply clone the repo and initialize submodules:
 
 ```bash
-git clone https://github.com/gujjwal00/avnc.git
-cd avnc
+git clone https://github.com/Vicky8106/vnc-android-free.git
+cd vnc-android-free
 git submodule update --init --depth 1
 ```
 
 Now you can import the project in Android Studio, or build it directly from terminal.
 
-Read [Architecture.kt](app/src/main/java/com/gaurav/avnc/Architecture.kt) (preferably in
+Read [Architecture.kt](app/src/main/java/com/vncandroid/free/Architecture.kt) (preferably in
 Android Studio) to know more about the code.
 
 > [!TIP]
-> AVNC uses [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) to manage C/C++ dependencies.
+> This project uses [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) to manage C/C++ dependencies.
 > `vcpkg` downloads & builds these dependencies on first run.
-> So the first time you build/configure AVNC, it can take a lot of time.
+> So the first time you build/configure VNC android free, it can take a lot of time.
 > If you face an error, try adding `android.native.buildOutput=verbose` to `gradle.properties` in project root.
 
 
 ##
-You can translate AVNC on [Weblate](https://hosted.weblate.org/engage/avnc/).
+You can translate the app on [Weblate](https://hosted.weblate.org/).
 
-[<img src="https://hosted.weblate.org/widgets/avnc/-/open-graph.png" alt="Translation status" height="200" />](https://hosted.weblate.org/engage/avnc/)
+[<img src="" alt="Translation status" height="200" />](https://hosted.weblate.org/)
 
 
 ## Credits
 
-- Authors of libraries AVNC depends on (LibVNCClient, libjpeg-turbo, wolfSSL, sshlib, leakcanary etc.)
+- Authors of libraries VNC android free depends on (LibVNCClient, libjpeg-turbo, wolfSSL, sshlib, leakcanary etc.)
 - Contributors for reporting issues, providing fixes
-- Contributors for translating AVNC, and [Weblate](https://weblate.org/) for translation hosting
+- Contributors for translating the app, and [Weblate](https://weblate.org/) for translation hosting
 - [Browserstack](https://www.browserstack.com/) for providing testing infrastructure
