@@ -8,14 +8,13 @@
 
 package com.vncandroid.free.ui.vnc
 
+import android.view.KeyEvent
 import android.view.ViewConfiguration
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -23,28 +22,21 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -56,26 +48,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vncandroid.free.R
 import kotlinx.coroutines.delay
 
 /**
- * Modern Jetpack Compose Material 3 Virtual Keys Bar.
- * Features 20% transparency (matching the floating Virtual Mouse),
- * responsive modifier toggle latching with visual lock indicator,
- * hold-to-repeat hardware scan-code dispatching (18ms BMC USB HID timing),
- * and a sleek integrated Text Send console.
+ * Modern Jetpack Compose Material 3 Virtual Keys Overlay.
+ * Designed with a RealVNC desktop-first ergonomic workflow:
+ * - Direct Fn toggle with expandable full Function Keys strip (F1 to F12)
+ * - Dedicated Windows button (Win) with start menu trigger & modifier latching
+ * - Dedicated forward Delete key (Del)
+ * - RealVNC Inverted-T Aligned Arrow Cluster with generous touch spacing
+ * - Enlarged Scroll Up & Scroll Down controls with hold-to-scroll acceleration
+ * - One-tap Virtual Mouse toggle mode
+ * - 20% transparent surface (alpha = 0.80f)
  */
 @Composable
 fun VirtualKeysOverlay(
@@ -83,7 +75,7 @@ fun VirtualKeysOverlay(
     modifier: Modifier = Modifier
 ) {
     val isVisible by virtualKeys.isVisibleState
-    val isTextMode by virtualKeys.isTextModeState
+    val isFnMode by virtualKeys.isFnModeState
 
     AnimatedVisibility(
         visible = isVisible,
@@ -96,152 +88,475 @@ fun VirtualKeysOverlay(
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.80f),
             tonalElevation = 8.dp,
             shadowElevation = 10.dp,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.40f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp, vertical = 2.dp)
         ) {
-            AnimatedContent(
-                targetState = isTextMode,
-                transitionSpec = {
-                    fadeIn() togetherWith fadeOut()
-                },
-                label = "VirtualKeysModeTransition"
-            ) { textMode ->
-                if (!textMode) {
-                    KeysModeContent(virtualKeys = virtualKeys)
-                } else {
-                    TextModeContent(virtualKeys = virtualKeys)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                // 1. Expandable Function Keys Strip (F1 - F12)
+                AnimatedVisibility(
+                    visible = isFnMode,
+                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+                ) {
+                    FunctionKeysStrip(virtualKeys = virtualKeys)
                 }
+
+                // 2. Primary Control & RealVNC Navigation Bar
+                MainControlsBar(virtualKeys = virtualKeys)
             }
         }
     }
 }
 
 @Composable
-private fun KeysModeContent(
+private fun FunctionKeysStrip(
     virtualKeys: VirtualKeys,
     modifier: Modifier = Modifier
 ) {
-    val pref = virtualKeys.pref
-    val rowCount = remember(pref) { pref.input.vkRowCount.coerceIn(1, 4) }
-    val keys = remember(pref) { VirtualKeyLayoutConfig.getLayout(pref) }
-    val columns = remember(keys, rowCount) { keys.chunked(rowCount) }
-
     Row(
         modifier = modifier
-            .padding(horizontal = 5.dp, vertical = 4.dp)
-            .heightIn(min = 40.dp),
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Quick Action: Switch to Text Send Mode
-        IconButton(
-            onClick = { virtualKeys.setTextMode(true) },
-            modifier = Modifier
-                .size(34.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
-                    shape = RoundedCornerShape(8.dp)
-                )
+        // Tag badge: "FN"
+        Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier.padding(end = 2.dp)
         ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_send),
-                contentDescription = "Send Text to Server",
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(17.dp)
+            Text(
+                text = "FN",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
             )
         }
 
-        Spacer(modifier = Modifier.width(4.dp))
-        Box(
-            modifier = Modifier
-                .width(1.dp)
-                .height(32.dp)
-                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-        )
-        Spacer(modifier = Modifier.width(4.dp))
+        // Group 1: F1 - F4
+        FunctionKeyButton("F1", KeyEvent.KEYCODE_F1, virtualKeys)
+        FunctionKeyButton("F2", KeyEvent.KEYCODE_F2, virtualKeys)
+        FunctionKeyButton("F3", KeyEvent.KEYCODE_F3, virtualKeys)
+        FunctionKeyButton("F4", KeyEvent.KEYCODE_F4, virtualKeys)
 
-        // Horizontally Scrollable Keys Grid
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            columns.forEach { columnKeys ->
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    columnKeys.forEach { key ->
-                        VirtualKeyItem(key = key, virtualKeys = virtualKeys)
-                    }
-                }
+        // Visual Separator between clusters
+        Spacer(modifier = Modifier.width(6.dp))
+
+        // Group 2: F5 - F8
+        FunctionKeyButton("F5", KeyEvent.KEYCODE_F5, virtualKeys)
+        FunctionKeyButton("F6", KeyEvent.KEYCODE_F6, virtualKeys)
+        FunctionKeyButton("F7", KeyEvent.KEYCODE_F7, virtualKeys)
+        FunctionKeyButton("F8", KeyEvent.KEYCODE_F8, virtualKeys)
+
+        // Visual Separator between clusters
+        Spacer(modifier = Modifier.width(6.dp))
+
+        // Group 3: F9 - F12
+        FunctionKeyButton("F9", KeyEvent.KEYCODE_F9, virtualKeys)
+        FunctionKeyButton("F10", KeyEvent.KEYCODE_F10, virtualKeys)
+        FunctionKeyButton("F11", KeyEvent.KEYCODE_F11, virtualKeys)
+        FunctionKeyButton("F12", KeyEvent.KEYCODE_F12, virtualKeys)
+    }
+}
+
+@Composable
+private fun FunctionKeyButton(
+    label: String,
+    keyCode: Int,
+    virtualKeys: VirtualKeys,
+    modifier: Modifier = Modifier
+) {
+    var isPressedVisual by remember { mutableStateOf(false) }
+    var isHolding by remember { mutableStateOf(false) }
+
+    val repeatTimeout = remember { ViewConfiguration.getKeyRepeatTimeout().toLong().coerceAtLeast(280L) }
+    val repeatDelay = remember { ViewConfiguration.getKeyRepeatDelay().toLong().coerceAtLeast(40L) }
+
+    LaunchedEffect(isHolding) {
+        if (isHolding) {
+            virtualKeys.sendKey(keyCode)
+            delay(repeatTimeout)
+            while (isHolding) {
+                virtualKeys.sendKey(keyCode)
+                delay(repeatDelay)
             }
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (isPressedVisual) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f)
+        },
+        contentColor = if (isPressedVisual) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        modifier = modifier
+            .height(32.dp)
+            .defaultMinSize(minWidth = 42.dp)
+            .pointerInput(keyCode) {
+                detectTapGestures(
+                    onPress = {
+                        isPressedVisual = true
+                        isHolding = true
+                        tryAwaitRelease()
+                        isHolding = false
+                        isPressedVisual = false
+                    }
+                )
+            }
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
 
 @Composable
-private fun VirtualKeyItem(
-    key: VirtualKey,
+private fun MainControlsBar(
     virtualKeys: VirtualKeys,
     modifier: Modifier = Modifier
 ) {
-    when {
-        key == VirtualKey.ToggleKeyboard -> {
-            IconButton(
-                onClick = { virtualKeys.toggleKeyboard() },
-                modifier = modifier
-                    .size(width = 36.dp, height = 32.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
+    val isFnMode by virtualKeys.isFnModeState
+    val isMouseVisible by virtualKeys.virtualMouse.isVisibleState
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        // --- ZONE 1: Quick Action / Mode Switchers (Keyboard, Mouse, Fn) ---
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Keyboard toggle
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f),
+                modifier = Modifier
+                    .size(width = 38.dp, height = 34.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { virtualKeys.toggleKeyboard() })
+                    }
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_keyboard),
-                    contentDescription = "Toggle Keyboard",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_keyboard),
+                        contentDescription = "Toggle Keyboard",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            // Mouse toggle (RealVNC style)
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = if (isMouseVisible) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f)
+                },
+                border = if (isMouseVisible) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+                modifier = Modifier
+                    .size(width = 38.dp, height = 34.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { virtualKeys.toggleMouse() })
+                    }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_mouse),
+                        contentDescription = "Toggle Mouse Controls",
+                        tint = if (isMouseVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
 
-        key == VirtualKey.CloseKeys -> {
-            IconButton(
-                onClick = { virtualKeys.hide(saveVisibility = true) },
-                modifier = modifier
-                    .size(width = 36.dp, height = 32.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
+        // Fn Toggle Button (Takes the place of old Send Text button!)
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = if (isFnMode) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f)
+            },
+            modifier = Modifier
+                .size(width = 36.dp, height = 72.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { virtualKeys.toggleFnMode() })
+                }
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
+                Text(
+                    text = "Fn",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isFnMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
+                )
+                if (isFnMode) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(4.dp)
+                            .background(MaterialTheme.colorScheme.onPrimary, CircleShape)
+                    )
+                }
+            }
+        }
+
+        // Section Divider
+        BarDivider()
+
+        // --- ZONE 2: Essential Desktop Controls (2 Rows) ---
+        // Row 1: Esc, Tab, Win, Del
+        // Row 2: Ctrl, Alt, Shift, Caps
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // Row 1: Esc, Tab, Win, Del
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                StandardKeyButton("Esc", KeyEvent.KEYCODE_ESCAPE, virtualKeys, minWidth = 44.dp)
+                StandardKeyButton("Tab", KeyEvent.KEYCODE_TAB, virtualKeys, minWidth = 44.dp)
+                WindowsKeyButton(virtualKeys = virtualKeys, minWidth = 52.dp)
+                DeleteKeyButton(virtualKeys = virtualKeys, minWidth = 46.dp)
+            }
+
+            // Row 2: Ctrl, Alt, Shift, Caps
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                ModifierKeyButton(VirtualKey.LeftCtrl, virtualKeys, minWidth = 44.dp)
+                ModifierKeyButton(VirtualKey.LeftAlt, virtualKeys, minWidth = 44.dp)
+                ModifierKeyButton(VirtualKey.LeftShift, virtualKeys, minWidth = 52.dp)
+                ModifierKeyButton(VirtualKey.CapsLock, virtualKeys, minWidth = 46.dp)
+            }
+        }
+
+        // Section Divider
+        BarDivider()
+
+        // --- ZONE 3: RealVNC Aligned Navigation Cluster (Generous Spacing) ---
+        // Left Column: Home & End
+        // Center: Inverted-T Arrow Cluster (Up centered directly above Down, flanked by Left & Right)
+        // Right Column: PgUp & PgDn
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // Left Column: Home (top) & End (bottom)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                StandardKeyButton("Home", KeyEvent.KEYCODE_MOVE_HOME, virtualKeys, minWidth = 46.dp)
+                StandardKeyButton("End", KeyEvent.KEYCODE_MOVE_END, virtualKeys, minWidth = 46.dp)
+            }
+
+            // Center Column: Inverted-T Arrow Pad
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Top Row: Up Arrow centered!
+                ArrowKeyButton(
+                    key = VirtualKey.Up,
+                    icon = R.drawable.ic_keyboard_arrow_up,
+                    description = "Up Arrow",
+                    virtualKeys = virtualKeys,
+                    width = 54.dp,
+                    height = 34.dp
+                )
+
+                // Bottom Row: Left, Down, Right
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ArrowKeyButton(
+                        key = VirtualKey.Left,
+                        icon = R.drawable.ic_keyboard_arrow_left,
+                        description = "Left Arrow",
+                        virtualKeys = virtualKeys,
+                        width = 48.dp,
+                        height = 34.dp
+                    )
+                    ArrowKeyButton(
+                        key = VirtualKey.Down,
+                        icon = R.drawable.ic_keyboard_arrow_down,
+                        description = "Down Arrow",
+                        virtualKeys = virtualKeys,
+                        width = 54.dp,
+                        height = 34.dp
+                    )
+                    ArrowKeyButton(
+                        key = VirtualKey.Right,
+                        icon = R.drawable.ic_keyboard_arrow_right,
+                        description = "Right Arrow",
+                        virtualKeys = virtualKeys,
+                        width = 48.dp,
+                        height = 34.dp
+                    )
+                }
+            }
+
+            // Right Column: PgUp (top) & PgDn (bottom)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                StandardKeyButton("PgUp", KeyEvent.KEYCODE_PAGE_UP, virtualKeys, minWidth = 46.dp)
+                StandardKeyButton("PgDn", KeyEvent.KEYCODE_PAGE_DOWN, virtualKeys, minWidth = 46.dp)
+            }
+        }
+
+        // Section Divider
+        BarDivider()
+
+        // --- ZONE 4: Big Scroll Up & Scroll Down Controls ---
+        // The user specifically requested:
+        // "THE SCROLL UP, SCROLL DOWN OPTIONS NEED TO BE BIGGER IN SIZE. THERE IS ENOUGH SPACE IN THE SCREEN FOR THEM TO FIT. LOOK AT THAT."
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            ScrollPadButton(
+                icon = Icons.Default.KeyboardArrowUp,
+                contentDescription = "Scroll Up",
+                onScroll = { virtualKeys.onScrollUp() },
+                width = 54.dp,
+                height = 34.dp
+            )
+            ScrollPadButton(
+                icon = Icons.Default.KeyboardArrowDown,
+                contentDescription = "Scroll Down",
+                onScroll = { virtualKeys.onScrollDown() },
+                width = 54.dp,
+                height = 34.dp
+            )
+        }
+
+        // Section Divider
+        BarDivider()
+
+        // --- ZONE 5: Dismiss / Close Button ---
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f),
+            modifier = Modifier
+                .size(width = 34.dp, height = 72.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { virtualKeys.hide(saveVisibility = true) })
+                }
+        ) {
+            Box(contentAlignment = Alignment.Center) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_clear),
                     contentDescription = "Close Virtual Keys",
                     tint = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
-        }
-
-        key.isToggle -> {
-            ToggleKeyItem(key = key, virtualKeys = virtualKeys, modifier = modifier)
-        }
-
-        else -> {
-            RepeatableKeyItem(key = key, virtualKeys = virtualKeys, modifier = modifier)
         }
     }
 }
 
 @Composable
-private fun ToggleKeyItem(
-    key: VirtualKey,
+private fun BarDivider() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(64.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+    )
+}
+
+@Composable
+private fun StandardKeyButton(
+    label: String,
+    keyCode: Int,
     virtualKeys: VirtualKeys,
+    minWidth: Dp = 44.dp,
     modifier: Modifier = Modifier
 ) {
+    var isPressedVisual by remember { mutableStateOf(false) }
+    var isHolding by remember { mutableStateOf(false) }
+
+    val repeatTimeout = remember { ViewConfiguration.getKeyRepeatTimeout().toLong().coerceAtLeast(280L) }
+    val repeatDelay = remember { ViewConfiguration.getKeyRepeatDelay().toLong().coerceAtLeast(40L) }
+
+    LaunchedEffect(isHolding) {
+        if (isHolding) {
+            virtualKeys.sendKey(keyCode)
+            delay(repeatTimeout)
+            while (isHolding) {
+                virtualKeys.sendKey(keyCode)
+                delay(repeatDelay)
+            }
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (isPressedVisual) {
+            MaterialTheme.colorScheme.surfaceVariant
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f)
+        },
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+            .height(34.dp)
+            .defaultMinSize(minWidth = minWidth)
+            .pointerInput(keyCode) {
+                detectTapGestures(
+                    onPress = {
+                        isPressedVisual = true
+                        isHolding = true
+                        tryAwaitRelease()
+                        isHolding = false
+                        isPressedVisual = false
+                    }
+                )
+            }
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun WindowsKeyButton(
+    virtualKeys: VirtualKeys,
+    minWidth: Dp = 52.dp,
+    modifier: Modifier = Modifier
+) {
+    val key = VirtualKey.LeftSuper
     val isToggled = virtualKeys.activeToggleKeys[key] == true
     val isLocked = virtualKeys.lockedToggleKeys[key] == true
 
@@ -250,19 +565,17 @@ private fun ToggleKeyItem(
         color = when {
             isLocked -> MaterialTheme.colorScheme.primary
             isToggled -> MaterialTheme.colorScheme.primaryContainer
-            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f)
         },
         contentColor = when {
             isLocked -> MaterialTheme.colorScheme.onPrimary
             isToggled -> MaterialTheme.colorScheme.onPrimaryContainer
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
-        border = if (isToggled && !isLocked) {
-            BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-        } else null,
+        border = if (isToggled && !isLocked) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = modifier
-            .height(32.dp)
-            .defaultMinSize(minWidth = 36.dp)
+            .height(34.dp)
+            .defaultMinSize(minWidth = minWidth)
             .pointerInput(key) {
                 detectTapGestures(
                     onTap = {
@@ -279,19 +592,17 @@ private fun ToggleKeyItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            if (key.icon != null) {
-                Icon(
-                    painter = painterResource(id = key.icon),
-                    contentDescription = key.description ?: key.label ?: key.name,
-                    modifier = Modifier.size(16.dp)
-                )
-            } else {
-                Text(
-                    text = key.label ?: key.name,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+            Icon(
+                painter = painterResource(id = R.drawable.ic_super_key),
+                contentDescription = "Windows Key",
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(3.dp))
+            Text(
+                text = "Win",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
             if (isLocked) {
                 Spacer(modifier = Modifier.width(3.dp))
                 Box(
@@ -305,23 +616,23 @@ private fun ToggleKeyItem(
 }
 
 @Composable
-private fun RepeatableKeyItem(
-    key: VirtualKey,
+private fun DeleteKeyButton(
     virtualKeys: VirtualKeys,
+    minWidth: Dp = 46.dp,
     modifier: Modifier = Modifier
 ) {
-    var isHolding by remember { mutableStateOf(false) }
     var isPressedVisual by remember { mutableStateOf(false) }
+    var isHolding by remember { mutableStateOf(false) }
 
-    val repeatTimeout = remember { ViewConfiguration.getKeyRepeatTimeout().toLong().coerceAtLeast(300L) }
+    val repeatTimeout = remember { ViewConfiguration.getKeyRepeatTimeout().toLong().coerceAtLeast(280L) }
     val repeatDelay = remember { ViewConfiguration.getKeyRepeatDelay().toLong().coerceAtLeast(40L) }
 
     LaunchedEffect(isHolding) {
         if (isHolding) {
-            key.keyCode?.let { virtualKeys.sendKey(it) }
+            virtualKeys.sendKey(KeyEvent.KEYCODE_FORWARD_DEL)
             delay(repeatTimeout)
             while (isHolding) {
-                key.keyCode?.let { virtualKeys.sendKey(it) }
+                virtualKeys.sendKey(KeyEvent.KEYCODE_FORWARD_DEL)
                 delay(repeatDelay)
             }
         }
@@ -330,15 +641,19 @@ private fun RepeatableKeyItem(
     Surface(
         shape = RoundedCornerShape(8.dp),
         color = if (isPressedVisual) {
-            MaterialTheme.colorScheme.surfaceVariant
+            MaterialTheme.colorScheme.errorContainer
         } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
         },
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        contentColor = if (isPressedVisual) {
+            MaterialTheme.colorScheme.onErrorContainer
+        } else {
+            MaterialTheme.colorScheme.error
+        },
         modifier = modifier
-            .height(32.dp)
-            .defaultMinSize(minWidth = if (key.icon != null) 32.dp else 36.dp)
-            .pointerInput(key) {
+            .height(34.dp)
+            .defaultMinSize(minWidth = minWidth)
+            .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
                         isPressedVisual = true
@@ -354,17 +669,68 @@ private fun RepeatableKeyItem(
             modifier = Modifier.padding(horizontal = 6.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (key.icon != null) {
-                Icon(
-                    painter = painterResource(id = key.icon),
-                    contentDescription = key.description ?: key.label ?: key.name,
-                    modifier = Modifier.size(16.dp)
+            Text(
+                text = "Del",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModifierKeyButton(
+    key: VirtualKey,
+    virtualKeys: VirtualKeys,
+    minWidth: Dp = 44.dp,
+    modifier: Modifier = Modifier
+) {
+    val isToggled = virtualKeys.activeToggleKeys[key] == true
+    val isLocked = virtualKeys.lockedToggleKeys[key] == true
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = when {
+            isLocked -> MaterialTheme.colorScheme.primary
+            isToggled -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f)
+        },
+        contentColor = when {
+            isLocked -> MaterialTheme.colorScheme.onPrimary
+            isToggled -> MaterialTheme.colorScheme.onPrimaryContainer
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        border = if (isToggled && !isLocked) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+        modifier = modifier
+            .height(34.dp)
+            .defaultMinSize(minWidth = minWidth)
+            .pointerInput(key) {
+                detectTapGestures(
+                    onTap = {
+                        virtualKeys.onToggleKeyClick(key)
+                    },
+                    onLongPress = {
+                        virtualKeys.onToggleKeyLongClick(key)
+                    }
                 )
-            } else {
-                Text(
-                    text = key.label ?: key.name,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
+            }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = key.label ?: key.name,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (isLocked) {
+                Spacer(modifier = Modifier.width(3.dp))
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .background(MaterialTheme.colorScheme.onPrimary, CircleShape)
                 )
             }
         }
@@ -372,121 +738,123 @@ private fun RepeatableKeyItem(
 }
 
 @Composable
-private fun TextModeContent(
+private fun ArrowKeyButton(
+    key: VirtualKey,
+    icon: Int,
+    description: String,
     virtualKeys: VirtualKeys,
+    width: Dp,
+    height: Dp,
     modifier: Modifier = Modifier
 ) {
-    var text by virtualKeys.textInputState
-    val focusRequester = remember { FocusRequester() }
+    val keyCode = key.keyCode ?: return
+    var isPressedVisual by remember { mutableStateOf(false) }
+    var isHolding by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+    val repeatTimeout = remember { ViewConfiguration.getKeyRepeatTimeout().toLong().coerceAtLeast(280L) }
+    val repeatDelay = remember { ViewConfiguration.getKeyRepeatDelay().toLong().coerceAtLeast(40L) }
+
+    LaunchedEffect(isHolding) {
+        if (isHolding) {
+            virtualKeys.sendKey(keyCode)
+            delay(repeatTimeout)
+            while (isHolding) {
+                virtualKeys.sendKey(keyCode)
+                delay(repeatDelay)
+            }
+        }
     }
 
-    Row(
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (isPressedVisual) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f)
+        },
+        contentColor = if (isPressedVisual) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
         modifier = modifier
-            .padding(horizontal = 6.dp, vertical = 4.dp)
-            .height(44.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        // Back Button: Return to Keys Mode
-        IconButton(
-            onClick = { virtualKeys.setTextMode(false) },
-            modifier = Modifier.size(36.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_arrow_back),
-                contentDescription = "Back to keys",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        // Text Input Box
-        BasicTextField(
-            value = text,
-            onValueChange = { if (it.length <= 1000) text = it },
-            modifier = Modifier
-                .weight(1f)
-                .height(36.dp)
-                .focusRequester(focusRequester)
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f),
-                    shape = RoundedCornerShape(10.dp)
+            .size(width = width, height = height)
+            .pointerInput(keyCode) {
+                detectTapGestures(
+                    onPress = {
+                        isPressedVisual = true
+                        isHolding = true
+                        tryAwaitRelease()
+                        isHolding = false
+                        isPressedVisual = false
+                    }
                 )
-                .padding(horizontal = 10.dp),
-            singleLine = true,
-            textStyle = TextStyle(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 13.sp
-            ),
-            keyboardOptions = KeyboardOptions(
-                imeAction = ImeAction.Send,
-                autoCorrectEnabled = false
-            ),
-            keyboardActions = KeyboardActions(
-                onSend = {
-                    virtualKeys.handleTextBoxAction(text)
-                }
-            ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            decorationBox = { innerTextField ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        if (text.isEmpty()) {
-                            Text(
-                                text = stringResource(id = R.string.hint_send_text_to_server),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f),
-                                fontSize = 12.sp
-                            )
-                        }
-                        innerTextField()
-                    }
-                    if (text.isNotEmpty()) {
-                        IconButton(
-                            onClick = { text = "" },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Clear text",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
             }
-        )
-
-        // Paste Button
-        IconButton(
-            onClick = { virtualKeys.onPasteClick() },
-            modifier = Modifier.size(36.dp)
-        ) {
+    ) {
+        Box(contentAlignment = Alignment.Center) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_content_paste),
-                contentDescription = "Paste from clipboard",
-                tint = MaterialTheme.colorScheme.primary,
+                painter = painterResource(id = icon),
+                contentDescription = description,
                 modifier = Modifier.size(20.dp)
             )
         }
+    }
+}
 
-        // Send Button
-        FilledTonalButton(
-            onClick = { virtualKeys.handleTextBoxAction(text) },
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier.height(36.dp)
-        ) {
+@Composable
+private fun ScrollPadButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onScroll: () -> Unit,
+    width: Dp,
+    height: Dp,
+    modifier: Modifier = Modifier
+) {
+    var isHolding by remember { mutableStateOf(false) }
+    var isPressedVisual by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isHolding) {
+        if (isHolding) {
+            onScroll()
+            delay(200)
+            while (isHolding) {
+                onScroll()
+                delay(50)
+            }
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (isPressedVisual) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
+        },
+        contentColor = if (isPressedVisual) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        },
+        modifier = modifier
+            .size(width = width, height = height)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressedVisual = true
+                        isHolding = true
+                        tryAwaitRelease()
+                        isHolding = false
+                        isPressedVisual = false
+                    }
+                )
+            }
+    ) {
+        Box(contentAlignment = Alignment.Center) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_send),
-                contentDescription = "Send text",
-                modifier = Modifier.size(16.dp)
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(22.dp)
             )
         }
     }

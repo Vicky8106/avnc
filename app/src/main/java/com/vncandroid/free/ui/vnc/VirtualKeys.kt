@@ -48,7 +48,7 @@ import kotlin.math.sign
  *
  * This class manages the state and actions of virtual keys, rendered via Jetpack Compose.
  */
-class VirtualKeys(private val activity: VncActivity, private val inputHandler: InputHandler) {
+class VirtualKeys(val activity: VncActivity, private val inputHandler: InputHandler) {
 
     val viewModel = activity.viewModel
     val pref = activity.viewModel.pref
@@ -56,7 +56,26 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
 
     val isVisibleState = mutableStateOf(false)
     val isTextModeState = mutableStateOf(false)
+    val isFnModeState = mutableStateOf(false)
     val textInputState = mutableStateOf("")
+
+    val virtualMouse: VirtualMouse get() = activity.virtualMouse
+
+    fun toggleFnMode() {
+        isFnModeState.value = !isFnModeState.value
+    }
+
+    fun toggleMouse() {
+        activity.virtualMouse.toggle()
+    }
+
+    fun onScrollUp() {
+        activity.virtualMouse.onScrollUp()
+    }
+
+    fun onScrollDown() {
+        activity.virtualMouse.onScrollDown()
+    }
 
     val activeToggleKeys = mutableStateMapOf<VirtualKey, Boolean>()
     val lockedToggleKeys = mutableStateMapOf<VirtualKey, Boolean>()
@@ -334,7 +353,7 @@ enum class VirtualKey(
     LeftShift(keyCode = KeyEvent.KEYCODE_SHIFT_LEFT, label = "Shift", isToggle = true),
     LeftCtrl(keyCode = KeyEvent.KEYCODE_CTRL_LEFT, label = "Ctrl", isToggle = true),
     LeftAlt(keyCode = KeyEvent.KEYCODE_ALT_LEFT, label = "Alt", isToggle = true),
-    LeftSuper(keyCode = KeyEvent.KEYCODE_META_LEFT, label = "Super", icon = R.drawable.ic_super_key, isToggle = true),
+    LeftSuper(keyCode = KeyEvent.KEYCODE_META_LEFT, label = "Win", icon = R.drawable.ic_super_key, isToggle = true),
     CapsLock(keyCode = KeyEvent.KEYCODE_CAPS_LOCK, label = "Caps", isToggle = true),
 
     Esc(keyCode = KeyEvent.KEYCODE_ESCAPE),
@@ -344,7 +363,7 @@ enum class VirtualKey(
     PgUp(keyCode = KeyEvent.KEYCODE_PAGE_UP),
     PgDn(keyCode = KeyEvent.KEYCODE_PAGE_DOWN),
     Insert(keyCode = KeyEvent.KEYCODE_INSERT),
-    Delete(keyCode = KeyEvent.KEYCODE_FORWARD_DEL),
+    Delete(keyCode = KeyEvent.KEYCODE_FORWARD_DEL, label = "Del"),
 
     // Arrow keys
     Left(keyCode = KeyEvent.KEYCODE_DPAD_LEFT, icon = R.drawable.ic_keyboard_arrow_left),
@@ -372,9 +391,9 @@ enum class VirtualKey(
  */
 object VirtualKeyLayoutConfig {
 
-    private val DEFAULT_LAYOUT = listOf(VirtualKey.ToggleKeyboard, VirtualKey.CloseKeys, VirtualKey.Esc, VirtualKey.LeftSuper,
-                                        VirtualKey.Tab, VirtualKey.LeftCtrl, VirtualKey.LeftShift, VirtualKey.LeftAlt,
-                                        VirtualKey.CapsLock,
+    private val DEFAULT_LAYOUT = listOf(VirtualKey.ToggleKeyboard, VirtualKey.CloseKeys, VirtualKey.Esc, VirtualKey.Tab,
+                                        VirtualKey.LeftSuper, VirtualKey.LeftCtrl, VirtualKey.LeftAlt, VirtualKey.LeftShift,
+                                        VirtualKey.Delete, VirtualKey.CapsLock,
                                         VirtualKey.Home, VirtualKey.Left, VirtualKey.Up, VirtualKey.Down, VirtualKey.End,
                                         VirtualKey.Right, VirtualKey.PgUp, VirtualKey.PgDn)
 
@@ -383,7 +402,7 @@ object VirtualKeyLayoutConfig {
      * 'Show all' keys. This layout is used for compatibility with that pref.
      */
     private val DEFAULT_LAYOUT_ALL = DEFAULT_LAYOUT +
-                                     listOf(VirtualKey.Insert, VirtualKey.Delete, VirtualKey.F1, VirtualKey.F2, VirtualKey.F3,
+                                     listOf(VirtualKey.Insert, VirtualKey.F1, VirtualKey.F2, VirtualKey.F3,
                                             VirtualKey.F4, VirtualKey.F5, VirtualKey.F6, VirtualKey.F7, VirtualKey.F8,
                                             VirtualKey.F9, VirtualKey.F10, VirtualKey.F11, VirtualKey.F12)
 
