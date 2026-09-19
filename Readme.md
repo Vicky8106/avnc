@@ -10,6 +10,7 @@
 ---
 
 ### Highlights & New Features (v1.7.0)
+- **Modern Jetpack Compose Virtual Keys Bar:** Migrated in-session virtual keys from legacy XML ViewStub/ViewPager to modern Jetpack Compose Material 3 composables with 20% transparency (matching the floating Virtual Mouse), responsive modifier locking with visual lock indicators, hold-to-repeat hardware key events, and a sleek integrated Text Send console.
 - **Full Android Keyboard Support (Enter, Space, Backspace, Tab, Special Keys):** Soft keyboards (Gboard, Samsung Keyboard, etc.) now have dedicated handlers for Enter (`\n`, `performEditorAction`), Space, Tab, Backspace (`deleteSurroundingText`), and direct single-character dispatch for all special symbols (`!@#$%^&*()_+-=[]{}|;':",.<>?/~`). Keystrokes are held for 18ms so server BMCs never drop inputs.
 - **Immediate Post-Paste Enter & Key Responsiveness:** Tightened paste deduplication window so pressing Enter or typing immediately after copy-pasting is never swallowed or delayed.
 - **BMC / IPMI KVM Hardware-Calibrated Paste Timing:** Calibrated key press duration (18ms) and pacing delay (22ms) to align precisely with physical server Baseboard Management Controller (BMC) USB HID polling cadences (~10–16ms). Completely eliminates USB buffer overflows, dropped keystrokes, and out-of-order execution during long pastes (tested up to 1,000 characters).
