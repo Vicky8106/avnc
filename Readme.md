@@ -1,100 +1,87 @@
+# VNC Android Free
 
-# VNC android free
+<p align="center">
+  <img src="metadata/en-US/images/icon.png" width="128" height="128" alt="VNC Android Free Icon" />
+</p>
 
-<p align="center"> <b>VNC android free</b> is a high-performance, open-source VNC client for Android. </p>
+<p align="center">
+  <b>VNC Android Free</b> is a modern, high-performance, open-source VNC client for Android featuring RealVNC-inspired desktop ergonomics, Jetpack Compose virtual keys, calibrated BMC paste timing, and full remote desktop control.
+</p>
 
-### 📥 Download APK
-* **[Download Latest VNC-android-free.apk (v1.7.0)](https://github.com/Vicky8106/vnc-android-free/releases/download/v1.7.0/VNC-android-free.apk)**
-* Repository file: [`release/VNC-android-free.apk`](release/VNC-android-free.apk)
+<p align="center">
+  <a href="https://github.com/Vicky8106/avnc/releases/latest"><img src="https://img.shields.io/github/v/release/Vicky8106/avnc?style=flat-square&color=blue" alt="Latest Release" /></a>
+  <a href="https://github.com/Vicky8106/avnc/actions"><img src="https://img.shields.io/github/actions/workflow/status/Vicky8106/avnc/main.yml?style=flat-square" alt="Build Status" /></a>
+  <a href="COPYING.txt"><img src="https://img.shields.io/badge/License-GPL%20v3-green.svg?style=flat-square" alt="License: GPL-3.0" /></a>
+</p>
 
 ---
 
-### Highlights & New Features (v1.7.0)
-- **Modern Jetpack Compose Virtual Keys Bar:** Migrated in-session virtual keys from legacy XML ViewStub/ViewPager to modern Jetpack Compose Material 3 composables with 20% transparency (matching the floating Virtual Mouse), responsive modifier locking with visual lock indicators, hold-to-repeat hardware key events, and a sleek integrated Text Send console.
-- **Full Android Keyboard Support (Enter, Space, Backspace, Tab, Special Keys):** Soft keyboards (Gboard, Samsung Keyboard, etc.) now have dedicated handlers for Enter (`\n`, `performEditorAction`), Space, Tab, Backspace (`deleteSurroundingText`), and direct single-character dispatch for all special symbols (`!@#$%^&*()_+-=[]{}|;':",.<>?/~`). Keystrokes are held for 18ms so server BMCs never drop inputs.
-- **Immediate Post-Paste Enter & Key Responsiveness:** Tightened paste deduplication window so pressing Enter or typing immediately after copy-pasting is never swallowed or delayed.
-- **BMC / IPMI KVM Hardware-Calibrated Paste Timing:** Calibrated key press duration (18ms) and pacing delay (22ms) to align precisely with physical server Baseboard Management Controller (BMC) USB HID polling cadences (~10–16ms). Completely eliminates USB buffer overflows, dropped keystrokes, and out-of-order execution during long pastes (tested up to 1,000 characters).
-- **Elimination of Synthetic Shift Injection (No More Stuck Caps / Lost Spaces):** Native RFB keysyms are sent directly without artificial `Shift_L` injection. The BMC firmware automatically sets USB HID modifier flags for uppercase keysyms, preventing the remote controller from missing release packets and leaving hardware Shift latched down.
-- **Guaranteed Modifier Cleanup & Instant Unstick:** Paste streams are wrapped with guaranteed `finally { releaseAllModifiers() }`, sending individual release packets for Left/Right Shift, Ctrl, Alt, Meta, Caps Lock, and Spacebar. Untoggling any modifier key (Caps, Shift, Ctrl, Alt) in Virtual Keys immediately forces all remote hardware modifiers to release.
-- **20% Transparent Virtual Mouse Overlay:** The entire virtual mouse interface (both the floating circular action button and the expanded control bar) has 80% opacity (`alpha = 0.80f`), allowing you to see the underlying remote desktop clearly while using mouse controls.
-- **Clean Single Cross ("✕") Button:** A single circular minimize button at the right end of the mouse bar collapses it back into the floating bubble.
-- **Definitive Fix for Automatic Enter on Long Copy-Paste:** Embedded line breaks (`\r\n`, `\r`, `\n`) within pasted text are sanitized to spaces during paste streaming so commands or input fields never execute prematurely.
-- **Expandable Floating Mouse (RealVNC Style):** On-screen Floating Action Button (FAB) that expands into full mouse options (Left Click, Middle Click, Scroll Up, Scroll Down, Right Click, Keyboard trigger).
+### 📥 Download APK
 
+* 🚀 **[Download Latest Release: VNC-android-free.apk (v1.7.0)](https://github.com/Vicky8106/avnc/releases/download/v1.7.0/VNC-android-free.apk)**
+* Local repository binary: [`release/VNC-android-free.apk`](release/VNC-android-free.apk)
 
-### Features
-- Material Design (with Dark theme)
-- Configurable gestures
-- Virtual Keys
-- VNC Repeater support
-- Wake-on-LAN support
-- Built-in SSH tunnel (VNC over SSH)
-- Picture-in-Picture mode
-- View-only mode
-- No-video mode
-- Automatic Server Discovery (Zeroconf)
-- Import/Export servers
-- Clipboard Sync with server
-- `vnc://` URI support
-- TLS support (AnonTLS, VeNCrypt)
-- Tight encoding support
+> [!NOTE]
+> If updating from an earlier build with package name `com.gaurav.avnc`, please uninstall that version from your Android device first. Starting with `v1.7.0` (package `com.vncandroid.free`), a persistent keystore is configured so all future updates install in-place automatically.
 
+---
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/com.vncandroid.free/)
-[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Play Store" height="80">](https://play.google.com/store/apps/details?id=com.vncandroid.free)
+### ✨ Features & Ergonomic Highlights
 
-### Screenshots
+#### ⌨️ Jetpack Compose Virtual Keys & RealVNC Layout
+- **Direct Function Keys (`F1` – `F12`)**: Replaced modal text consoles with a dedicated **`[Fn]`** toggle button. Tapping `[Fn]` slides out an organized Function Keys strip grouped into standard PC clusters (`F1-F4`, `F5-F8`, `F9-F12`) with calibrated 18ms HID timing.
+- **Dedicated Windows (`Win`) Key**: Single tap triggers the remote Windows Start Menu or Linux App Launcher; hold-to-lock modifier enables `Win+R`, `Win+E`, `Win+D`, and `Win+X`.
+- **Dedicated Forward Delete (`Del`) Key**: High-visibility Delete key for fast text and file management in terminals and GUI desktops.
+- **RealVNC Inverted-T Navigation Pad**: Properly spaced Inverted-T arrow cluster (`Up` centered directly above `Down`, flanked by `Left` and `Right`) with generous touch targets (48–54dp wide) to prevent accidental misclicks. Flanked by `Home`/`End` and `PgUp`/`PgDn`.
+- **Enlarged Scroll Controls**:
+  - High-contrast `Scroll Up (▲)` and `Scroll Down (▼)` pads in the virtual keys toolbar with accelerated continuous scrolling.
+  - Enlarged tactile scroll buttons in the floating virtual mouse bar.
+  - **Floating Vertical Scroll Pillar**: Positioned along the right screen edge for comfortable one-thumb scrolling without blocking content.
+- **Dedicated Mouse Mode Button**: One-tap toggle directly on the virtual keys bar to switch between keyboard input and mouse pointer control.
+- **20% Transparent UI**: Modern Material 3 floating toolbar (`alpha = 0.80f`) keeps the remote desktop visible underneath.
 
-[<img src="metadata/en-US/images/phoneScreenshots/1.jpg" width="250">](metadata/en-US/images/phoneScreenshots/1.jpg)
-[<img src="metadata/en-US/images/phoneScreenshots/2.jpg" width="250">](metadata/en-US/images/phoneScreenshots/2.jpg)
-[<img src="metadata/en-US/images/phoneScreenshots/3.jpg" width="250">](metadata/en-US/images/phoneScreenshots/3.jpg)
-[<img src="metadata/en-US/images/phoneScreenshots/4.jpg" width="250">](metadata/en-US/images/phoneScreenshots/4.jpg)
-[<img src="metadata/en-US/images/phoneScreenshots/5.jpg" width="250">](metadata/en-US/images/phoneScreenshots/5.jpg)
-[<img src="metadata/en-US/images/phoneScreenshots/6.jpg" width="250">](metadata/en-US/images/phoneScreenshots/6.jpg)
-[<img src="metadata/en-US/images/phoneScreenshots/7.jpg" width="380">](metadata/en-US/images/phoneScreenshots/7.jpg)
-[<img src="metadata/en-US/images/phoneScreenshots/8.jpg" width="380">](metadata/en-US/images/phoneScreenshots/8.jpg)
+#### 🔌 Reliable BMC, KVM & IPMI Console Support
+- **Hardware-Calibrated Paste Timing**: Calibrated 18ms keypress duration and 22ms inter-key pacing to match physical server Baseboard Management Controller (BMC) USB HID polling cadences (~10–16ms). Eliminates buffer overflows and skipped keystrokes on Dell iDRAC, HP iLO, Supermicro IPMI, and Lenovo XCC consoles.
+- **Hardware Shift & Caps Protection**: Raw RFB keysym transmission avoids synthetic `Shift_L` injection, preventing remote hardware modifiers from getting stuck down.
+- **Guaranteed Modifier Release**: Every paste sequence enforces guaranteed cleanup across Shift, Ctrl, Alt, Meta, and Caps Lock.
+- **Full Soft & Hardware Keyboard Input**: Enter, Space, Tab, Backspace, and all special symbols (`!@#$%^&*()_+-=[]{}|;':",.<>?/~`) are dispatched cleanly with zero lost spaces.
 
-  
-Development
-===========
+#### 🌐 Enterprise & Remote Desktop Protocols
+- **Encryption & Security**: Anonymous TLS and VeNCrypt support for secure encrypted streams.
+- **Built-in SSH Tunnel**: Connect securely to remote hosts over SSH (`VNC over SSH`).
+- **Encodings**: High-performance Tight, ZRLE, Hextile, Raw, and CopyRect encodings with configurable JPEG compression.
+- **UltraVNC Repeater**: Connect to servers through UltraVNC repeater proxies (Mode I & Mode II).
+- **Wake-on-LAN**: Wake sleeping servers directly over local network or Internet.
+- **Automatic Server Discovery**: Zeroconf / mDNS server discovery.
+- **Convenience**: Picture-in-Picture (PiP) multitasking, View-only mode, and Remote/Local cursor customization.
 
-Tools required:
+---
 
-- Git 
-- Android Studio
-- Android SDK
-- NDK (with CMake)
-- For vcpkg (depending on your platform): curl, zip, unzip, tar, pkg-config, a C++ compiler
+### 🛠️ Building from Source
 
-To get started, simply clone the repo and initialize submodules:
+#### Prerequisites
+- **Git** with submodule support
+- **Android Studio** Ladybug or newer
+- **JDK 17** (Temurin recommended)
+- **Android SDK & NDK** (CMake 3.22.1+)
+- C++ build tools (for `vcpkg` native dependencies)
 
+#### Build Instructions
 ```bash
-git clone https://github.com/Vicky8106/vnc-android-free.git
-cd vnc-android-free
+# Clone repository with submodules
+git clone https://github.com/Vicky8106/avnc.git
+cd avnc
 git submodule update --init --depth 1
+
+# Build debug APK
+./gradlew assembleDebug
+
+# Output APK is located at:
+# app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Now you can import the project in Android Studio, or build it directly from terminal.
+---
 
-Read [Architecture.kt](app/src/main/java/com/vncandroid/free/Architecture.kt) (preferably in
-Android Studio) to know more about the code.
+### 📄 License
 
-> [!TIP]
-> This project uses [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) to manage C/C++ dependencies.
-> `vcpkg` downloads & builds these dependencies on first run.
-> So the first time you build/configure VNC android free, it can take a lot of time.
-> If you face an error, try adding `android.native.buildOutput=verbose` to `gradle.properties` in project root.
-
-
-##
-You can translate the app on [Weblate](https://hosted.weblate.org/).
-
-[<img src="" alt="Translation status" height="200" />](https://hosted.weblate.org/)
-
-
-## Credits
-
-- Authors of libraries VNC android free depends on (LibVNCClient, libjpeg-turbo, wolfSSL, sshlib, leakcanary etc.)
-- Contributors for reporting issues, providing fixes
-- Contributors for translating the app, and [Weblate](https://weblate.org/) for translation hosting
-- [Browserstack](https://www.browserstack.com/) for providing testing infrastructure
+VNC Android Free is licensed under the [GNU General Public License v3.0](COPYING.txt) (GPL-3.0-or-later).

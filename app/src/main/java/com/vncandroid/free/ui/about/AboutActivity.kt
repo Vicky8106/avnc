@@ -19,8 +19,8 @@ import com.vncandroid.free.util.EdgeToEdgeHelper
 class AboutActivity : AppCompatActivity() {
 
     companion object {
-        const val GIT_REPO_URL = "https://github.com/Vicky8106/vnc-android-free"
-        const val BUG_REPORT_URL = "https://github.com/Vicky8106/vnc-android-free/issues/new"
+        const val GIT_REPO_URL = "https://github.com/Vicky8106/avnc"
+        const val BUG_REPORT_URL = "https://github.com/Vicky8106/avnc/issues/new"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

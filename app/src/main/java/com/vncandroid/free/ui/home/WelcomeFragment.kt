@@ -24,9 +24,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
  */
 class WelcomeFragment : BottomSheetDialogFragment() {
 
-    private val GITHUB_RELEASE_URL = "https://github.com/Vicky8106/vnc-android-free/releases"
-    private val PLAY_APP_URL = "market://details?id=com.vncandroid.free"
-    private val PLAY_WEB_URL = "https://play.google.com/store/apps/details?id=com.vncandroid.free"
+    private val GITHUB_RELEASE_URL = "https://github.com/Vicky8106/avnc/releases"
+    private val GITHUB_REPO_URL = "https://github.com/Vicky8106/avnc"
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val binding = FragmentWelcomeBinding.inflate(inflater, container, false)
@@ -49,11 +48,8 @@ class WelcomeFragment : BottomSheetDialogFragment() {
     }
 
     private fun openAppStore() {
-        runCatching { startActivity(Intent.parseUri(PLAY_APP_URL, 0)) }
-                .onFailure {
-                    runCatching { startActivity(Intent.parseUri(PLAY_WEB_URL, 0)) }
-                            .onFailure { warnMissingBrowser() }
-                }
+        runCatching { startActivity(Intent.parseUri(GITHUB_REPO_URL, 0)) }
+                .onFailure { warnMissingBrowser() }
     }
 
     private fun warnMissingBrowser() {

@@ -29,7 +29,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/margin_large"
-            android:text="Disable video to use app as remote control, Capture pointer for seamless experience, Use Wake-on-LAN over Internet, and much more. See what's new in version 3."
+            android:text="Enjoy modern RealVNC desktop ergonomics, Jetpack Compose virtual keys, Function keys (F1-F12), Inverted-T arrows, enlarged scrolling controls, and calibrated hardware input."
             android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
 
         <Button
@@ -45,7 +45,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/margin_large"
-            android:text="Like using the app? Rate us on Play Store to let us know."
+            android:text="Enjoying VNC Android Free? Check out the project on GitHub."
             android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
 
         <Button
@@ -54,8 +54,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="end"
-            android:text="Rate"
-            app:icon="@drawable/ic_star" />
+            android:text="GitHub"
+            app:icon="@drawable/ic_github" />
 
 
         <ImageButton
