@@ -26,6 +26,10 @@ import com.gaurav.avnc.util.getClipboardText
 import com.gaurav.avnc.viewmodel.VncViewModel
 import kotlinx.coroutines.launch
 
+import android.view.KeyCharacterMap
+import com.gaurav.avnc.vnc.XKeySym
+import com.gaurav.avnc.vnc.XKeySymUnicode
+
 /**
  * This is a simple, transparent view to handle input events.
  * It acts as an edit box to handle key events.
@@ -42,23 +46,142 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
         private var lastPasteText = ""
 
         override fun sendKeyEvent(event: KeyEvent): Boolean {
+            if (event.keyCode == KeyEvent.KEYCODE_ENTER) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    sendEnterKey()
+                }
+                return true
+            }
+            if (event.keyCode == KeyEvent.KEYCODE_DEL) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    sendBackspaceKey()
+                }
+                return true
+            }
             return inputHandler?.onKeyEvent(event) == true || super.sendKeyEvent(event)
         }
 
-        override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
-            if (!text.isNullOrEmpty()) {
-                val str = text.toString()
-                val now = SystemClock.uptimeMillis()
-                val normalized = str.replace("\r\n", " ").replace('\r', ' ').replace('\n', ' ').trim()
-                if (now - lastPasteTime < 2000L && (lastPasteText == normalized || lastPasteText == str)) {
-                    return true
+        override fun performEditorAction(actionCode: Int): Boolean {
+            sendEnterKey()
+            return true
+        }
+
+        override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
+            if (beforeLength > 0) {
+                repeat(beforeLength) {
+                    sendBackspaceKey()
                 }
-                lastPasteTime = now
-                lastPasteText = normalized
-                (context as? VncActivity)?.sendTextToServer(str)
                 return true
             }
-            return super.commitText(text, newCursorPosition)
+            return super.deleteSurroundingText(beforeLength, afterLength)
+        }
+
+        override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
+            if (text.isNullOrEmpty()) {
+                return super.commitText(text, newCursorPosition)
+            }
+            val str = text.toString()
+
+            // 1. Enter key from keyboard (newline / carriage return)
+            if (str == "\n" || str == "\r" || str == "\r\n") {
+                sendEnterKey()
+                return true
+            }
+
+            // 2. Space key
+            if (str == " ") {
+                sendSpaceKey()
+                return true
+            }
+
+            // 3. Tab key
+            if (str == "\t") {
+                sendTabKey()
+                return true
+            }
+
+            // 4. Backspace
+            if (str == "\b") {
+                sendBackspaceKey()
+                return true
+            }
+
+            // 5. Single character or special symbol typed directly on keyboard
+            if (str.codePointCount(0, str.length) == 1) {
+                sendCharKey(str.codePointAt(0))
+                return true
+            }
+
+            // 6. Bulk text / clipboard paste (length > 1)
+            val now = SystemClock.uptimeMillis()
+            if (now - lastPasteTime < 400L && lastPasteText == str) {
+                return true
+            }
+            lastPasteTime = now
+            lastPasteText = str
+            (context as? VncActivity)?.sendTextToServer(str)
+            return true
+        }
+
+        private fun sendEnterKey() {
+            val messenger = (context as? VncActivity)?.viewModel?.messenger
+            if (messenger != null) {
+                messenger.sendKeyPress(XKeySym.XK_Return, 0, 18L)
+            } else {
+                inputHandler?.onKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                inputHandler?.onKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+            }
+        }
+
+        private fun sendSpaceKey() {
+            val messenger = (context as? VncActivity)?.viewModel?.messenger
+            if (messenger != null) {
+                messenger.sendKeyPress(XKeySym.XK_space, 0, 18L)
+            } else {
+                inputHandler?.onKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE))
+                inputHandler?.onKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SPACE))
+            }
+        }
+
+        private fun sendTabKey() {
+            val messenger = (context as? VncActivity)?.viewModel?.messenger
+            if (messenger != null) {
+                messenger.sendKeyPress(XKeySym.XK_Tab, 0, 18L)
+            } else {
+                inputHandler?.onKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_TAB))
+                inputHandler?.onKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_TAB))
+            }
+        }
+
+        private fun sendBackspaceKey() {
+            val messenger = (context as? VncActivity)?.viewModel?.messenger
+            if (messenger != null) {
+                messenger.sendKeyPress(XKeySym.XK_BackSpace, 0, 18L)
+            } else {
+                inputHandler?.onKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                inputHandler?.onKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+            }
+        }
+
+        private fun sendCharKey(codePoint: Int) {
+            val messenger = (context as? VncActivity)?.viewModel?.messenger
+            val keySym = when (codePoint) {
+                '\n'.code, '\r'.code -> XKeySym.XK_Return
+                ' '.code -> XKeySym.XK_space
+                '\t'.code -> XKeySym.XK_Tab
+                '\b'.code -> XKeySym.XK_BackSpace
+                else -> {
+                    val legacy = XKeySymUnicode.getLegacyKeySymForUnicodeChar(codePoint)
+                    if (legacy != 0) legacy else XKeySymUnicode.getKeySymForUnicodeChar(codePoint)
+                }
+            }
+            if (keySym != 0) {
+                if (messenger != null) {
+                    messenger.sendKeyPress(keySym, 0, 18L)
+                } else {
+                    inputHandler?.onKeyEvent(KeyEvent(0L, String(Character.toChars(codePoint)), KeyCharacterMap.VIRTUAL_KEYBOARD, 0))
+                }
+            }
         }
 
         override fun performContextMenuAction(id: Int): Boolean {
@@ -68,12 +191,11 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
                         val clip = getClipboardText(activity)
                         if (!clip.isNullOrEmpty()) {
                             val now = SystemClock.uptimeMillis()
-                            val normalized = clip.replace("\r\n", " ").replace('\r', ' ').replace('\n', ' ').trim()
-                            if (now - lastPasteTime < 2000L && (lastPasteText == normalized || lastPasteText == clip)) {
+                            if (now - lastPasteTime < 400L && lastPasteText == clip) {
                                 return@launch
                             }
                             lastPasteTime = now
-                            lastPasteText = normalized
+                            lastPasteText = clip
                             activity.sendTextToServer(clip)
                         }
                     }

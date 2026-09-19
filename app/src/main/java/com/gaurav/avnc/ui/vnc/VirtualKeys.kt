@@ -370,7 +370,6 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
             .replace("\r\n", " ")
             .replace('\r', ' ')
             .replace('\n', ' ')
-            .trim()
 
         if (sanitizedText.isEmpty()) return
 
@@ -420,8 +419,14 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
     }
 
     private fun sendKey(keyCode: Int) {
-        sendKey(keyCode, true)
-        sendKey(keyCode, false)
+        activity.lifecycleScope.launch(Dispatchers.Default) {
+            sendKey(keyCode, true)
+            try {
+                delay(18L)
+            } catch (_: Exception) {
+            }
+            sendKey(keyCode, false)
+        }
     }
 
     private fun sendKey(keyCode: Int, isDown: Boolean) {
