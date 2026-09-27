@@ -18,7 +18,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -174,6 +174,44 @@ class VirtualMouse(private val activity: VncActivity) {
     }
 }
 
+/**
+ * Tracks a press that may turn into a drag, with a deliberately low drag-start
+ * threshold (half the system touch slop) so floating controls feel responsive.
+ * Every move is consumed, so touches starting on the control never leak through
+ * to the frame underneath (that leak-through is what made dragging jitter).
+ *
+ * Returns the total distance travelled, so callers can tell taps from drags.
+ */
+private suspend fun AwaitPointerEventScope.trackPressAndDrag(
+    touchSlop: Float,
+    onDragDelta: (dx: Float, dy: Float) -> Unit
+): Float {
+    val down = awaitFirstDown(requireUnconsumed = false)
+    down.consume()
+    var totalDx = 0f
+    var totalDy = 0f
+    var lastPos = down.position
+    val threshold = touchSlop * 0.5f
+    while (true) {
+        val event = awaitPointerEvent()
+        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+        if (change.changedToUp()) {
+            change.consume()
+            break
+        }
+        change.consume()
+        val dx = change.position.x - lastPos.x
+        val dy = change.position.y - lastPos.y
+        totalDx += dx
+        totalDy += dy
+        if (hypot(totalDx, totalDy) > threshold) {
+            onDragDelta(dx, dy)
+        }
+        lastPos = change.position
+    }
+    return hypot(totalDx, totalDy)
+}
+
 @Composable
 fun VirtualMouseOverlay(
     virtualMouse: VirtualMouse,
@@ -184,6 +222,7 @@ fun VirtualMouseOverlay(
 
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+    val touchSlop = LocalViewConfiguration.current.touchSlop
 
     AnimatedVisibility(
         visible = isVisible,
@@ -213,44 +252,20 @@ fun VirtualMouseOverlay(
                 ) { expanded ->
                     if (!expanded) {
                         // Floating Action Button: touching/tapping expands the mouse options
-                        val touchSlop = LocalViewConfiguration.current.touchSlop
                         Surface(
                             modifier = Modifier
                                 .size(56.dp)
                                 .clip(CircleShape)
                                 .pointerInput(Unit) {
                                     awaitEachGesture {
-                                        val down = awaitFirstDown(requireUnconsumed = false)
-                                        var hasMoved = false
-                                        var totalDx = 0f
-                                        var totalDy = 0f
-                                        var lastPos = down.position
-                                        val downTime = System.currentTimeMillis()
-                                        while (true) {
-                                            val event = awaitPointerEvent()
-                                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                            if (change.changedToUp()) {
-                                                val duration = System.currentTimeMillis() - downTime
-                                                val dist = hypot(totalDx, totalDy)
-                                                if (!hasMoved || (duration < 350 && dist < touchSlop * 2f)) {
-                                                    virtualMouse.expand()
-                                                }
-                                                break
-                                            }
-                                            val currentPos = change.position
-                                            val dx = currentPos.x - lastPos.x
-                                            val dy = currentPos.y - lastPos.y
-                                            totalDx += dx
-                                            totalDy += dy
-                                            if (!hasMoved && hypot(totalDx, totalDy) > touchSlop) {
-                                                hasMoved = true
-                                            }
-                                            if (hasMoved) {
-                                                change.consume()
-                                                offsetX += dx
-                                                offsetY += dy
-                                            }
-                                            lastPos = currentPos
+                                        val dist = trackPressAndDrag(touchSlop) { dx, dy ->
+                                            offsetX += dx
+                                            offsetY += dy
+                                        }
+                                        // A press that never became a drag expands the panel;
+                                        // an actual drag only moves it.
+                                        if (dist < touchSlop) {
+                                            virtualMouse.expand()
                                         }
                                     }
                                 },
@@ -292,10 +307,11 @@ fun VirtualMouseOverlay(
                                         .fillMaxWidth()
                                         .height(16.dp)
                                         .pointerInput(Unit) {
-                                            detectDragGestures { change, dragAmount ->
-                                                change.consume()
-                                                offsetX += dragAmount.x
-                                                offsetY += dragAmount.y
+                                            awaitEachGesture {
+                                                trackPressAndDrag(touchSlop) { dx, dy ->
+                                                    offsetX += dx
+                                                    offsetY += dy
+                                                }
                                             }
                                         },
                                     contentAlignment = Alignment.Center

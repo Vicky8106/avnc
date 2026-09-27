@@ -339,7 +339,7 @@ private fun MainControlsBar(
 
         // --- ZONE 2: Essential Desktop Controls (2 Rows) ---
         // Row 1: Esc, Tab, Win, Del
-        // Row 2: Ctrl, Alt, Shift, Caps
+        // Row 2: Ctrl, Alt, Shift, Win (shortcut modifier)
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -351,12 +351,12 @@ private fun MainControlsBar(
                 DeleteKeyButton(virtualKeys = virtualKeys, minWidth = 46.dp)
             }
 
-            // Row 2: Ctrl, Alt, Shift, Caps
+            // Row 2: Ctrl, Alt, Shift, Win (shortcut modifier)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 ModifierKeyButton(VirtualKey.LeftCtrl, virtualKeys, minWidth = 44.dp)
                 ModifierKeyButton(VirtualKey.LeftAlt, virtualKeys, minWidth = 44.dp)
                 ModifierKeyButton(VirtualKey.LeftShift, virtualKeys, minWidth = 52.dp)
-                ModifierKeyButton(VirtualKey.CapsLock, virtualKeys, minWidth = 46.dp)
+                ModifierKeyButton(VirtualKey.LeftSuper, virtualKeys, minWidth = 46.dp, forceLatch = true)
             }
         }
 
@@ -683,6 +683,7 @@ private fun ModifierKeyButton(
     key: VirtualKey,
     virtualKeys: VirtualKeys,
     minWidth: Dp = 44.dp,
+    forceLatch: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val isToggled = virtualKeys.activeToggleKeys[key] == true
@@ -707,7 +708,7 @@ private fun ModifierKeyButton(
             .pointerInput(key) {
                 detectTapGestures(
                     onTap = {
-                        virtualKeys.onToggleKeyClick(key)
+                        virtualKeys.onToggleKeyClick(key, forceLatch)
                     },
                     onLongPress = {
                         virtualKeys.onToggleKeyLongClick(key)

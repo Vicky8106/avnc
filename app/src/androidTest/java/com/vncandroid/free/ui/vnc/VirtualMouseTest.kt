@@ -8,6 +8,7 @@
 
 package com.vncandroid.free.ui.vnc
 
+import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.contrib.DrawerActions
@@ -17,6 +18,7 @@ import com.vncandroid.free.CleanPrefsRule
 import com.vncandroid.free.R
 import com.vncandroid.free.VncSessionTest
 import com.vncandroid.free.doClick
+import com.vncandroid.free.targetPrefs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -53,6 +55,19 @@ class VirtualMouseTest : VncSessionTest() {
             vncSession.onActivity { activity ->
                 assertTrue(activity.virtualMouse.isVisible)
                 assertTrue(activity.virtualMouse.isExpandedState.value)
+            }
+        }
+    }
+
+    @Test
+    fun shortcutWinKeyLatchesDespiteSingleTapPref() {
+        targetPrefs.edit { putBoolean("vk_use_super_with_single_tap", true) }
+        vncSession.run {
+            vncSession.onActivity { activity ->
+                activity.virtualKeys.onToggleKeyClick(VirtualKey.LeftSuper, forceLatch = true)
+                assertTrue(activity.virtualKeys.activeToggleKeys[VirtualKey.LeftSuper] == true)
+                activity.virtualKeys.onToggleKeyClick(VirtualKey.LeftSuper, forceLatch = true)
+                assertFalse(activity.virtualKeys.activeToggleKeys[VirtualKey.LeftSuper] == true)
             }
         }
     }

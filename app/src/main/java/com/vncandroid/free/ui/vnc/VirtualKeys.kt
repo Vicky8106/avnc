@@ -184,9 +184,9 @@ class VirtualKeys(val activity: VncActivity, private val inputHandler: InputHand
         }
     }
 
-    fun onToggleKeyClick(vk: VirtualKey) {
+    fun onToggleKeyClick(vk: VirtualKey, forceLatch: Boolean = false) {
         val keyCode = vk.keyCode ?: return
-        if ((keyCode == KeyEvent.KEYCODE_META_LEFT || keyCode == KeyEvent.KEYCODE_META_RIGHT) && pref.input.vkUseSuperWithSingleTap) {
+        if (!forceLatch && (keyCode == KeyEvent.KEYCODE_META_LEFT || keyCode == KeyEvent.KEYCODE_META_RIGHT) && pref.input.vkUseSuperWithSingleTap) {
             sendKey(keyCode)
             return
         }
