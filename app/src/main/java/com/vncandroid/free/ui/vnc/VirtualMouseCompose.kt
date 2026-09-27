@@ -301,11 +301,12 @@ fun VirtualMouseOverlay(
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
                                 modifier = Modifier.padding(vertical = 6.dp, horizontal = 5.dp)
                             ) {
-                                // Drag handle to reposition the panel anywhere on screen
+                                // Drag handle to reposition the panel anywhere on screen.
+                                // Three clearly visible grip lines show users where to touch to move it.
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(16.dp)
+                                        .height(22.dp)
                                         .pointerInput(Unit) {
                                             awaitEachGesture {
                                                 trackPressAndDrag(touchSlop) { dx, dy ->
@@ -316,14 +317,21 @@ fun VirtualMouseOverlay(
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(width = 20.dp, height = 3.dp)
-                                            .background(
-                                                MaterialTheme.colorScheme.outlineVariant,
-                                                RoundedCornerShape(1.5.dp)
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(2.5.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        repeat(3) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(width = 22.dp, height = 3.dp)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                                                        RoundedCornerShape(1.5.dp)
+                                                    )
                                             )
-                                    )
+                                        }
+                                    }
                                 }
 
                                 // Scroll Up (supports hold-to-repeat)
