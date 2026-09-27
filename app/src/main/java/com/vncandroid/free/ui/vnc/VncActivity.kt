@@ -144,7 +144,7 @@ class VncActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        virtualMouse.hide()
+        virtualMouse.onBackground()
         virtualKeys.releaseMetaKeys()
         binding.frameView.onPause()
         if (viewModel.pref.viewer.pauseUpdatesInBackground)
@@ -447,7 +447,6 @@ class VncActivity : AppCompatActivity() {
     fun showKeyboard() {
         showKeyboard(currentFocus ?: binding.inputView)
         virtualKeys.onKeyboardOpen()
-        virtualMouse.show()
     }
 
     private fun updatePointerCapture(capturePointer: Boolean) {

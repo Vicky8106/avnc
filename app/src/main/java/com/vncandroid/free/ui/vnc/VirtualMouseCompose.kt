@@ -20,15 +20,10 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,7 +31,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -77,8 +71,8 @@ import kotlin.math.roundToInt
 
 /**
  * Jetpack Compose On-Screen Real-Time Virtual Mouse Controls (RealVNC style).
- * Features a draggable floating action button that expands into Left Click, Right Click,
- * Middle Click, Scroll Up/Down, and Keyboard triggers.
+ * A single draggable floating action button that expands into one vertical
+ * panel with Scroll Up, Scroll Down, Left Click, and Right Click.
  */
 class VirtualMouse(private val activity: VncActivity) {
 
@@ -110,6 +104,16 @@ class VirtualMouse(private val activity: VncActivity) {
                 viewModel.activeGestureStyle.value = it
             }
         }
+    }
+
+    /**
+     * Called when the app goes to background. Releases any held remote buttons
+     * (so a drag can never get stuck) while preserving overlay visibility,
+     * expanded state, and the gesture-style override. Backgrounding must never
+     * toggle the mouse.
+     */
+    fun onBackground() {
+        releaseAllButtons()
     }
 
     fun minimize() {
@@ -151,13 +155,6 @@ class VirtualMouse(private val activity: VncActivity) {
         viewModel.messenger?.sendPointerButtonDown(PointerButton.Right, pos)
         if (viewModel.profile.fButtonUpDelay) viewModel.messenger?.insertButtonUpDelay()
         viewModel.messenger?.sendPointerButtonUp(PointerButton.Right, pos)
-    }
-
-    fun onMiddleClick() {
-        val pos = currentPointerPos
-        viewModel.messenger?.sendPointerButtonDown(PointerButton.Middle, pos)
-        if (viewModel.profile.fButtonUpDelay) viewModel.messenger?.insertButtonUpDelay()
-        viewModel.messenger?.sendPointerButtonUp(PointerButton.Middle, pos)
     }
 
     fun onScrollUp() {
@@ -273,27 +270,27 @@ fun VirtualMouseOverlay(
                             }
                         }
                     } else {
-                        // Expanded Floating Mouse Control Bar (20% transparent)
+                        // Single vertical mouse panel: Scroll Up/Down, then Left/Right clicks.
                         Surface(
-                            shape = RoundedCornerShape(24.dp),
+                            shape = RoundedCornerShape(26.dp),
                             tonalElevation = 8.dp,
                             shadowElevation = 12.dp,
                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.80f),
-                            modifier = Modifier.clip(RoundedCornerShape(24.dp))
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(26.dp))
+                                .width(64.dp)
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .horizontalScroll(rememberScrollState())
-                                    .padding(horizontal = 6.dp, vertical = 4.dp)
-                                    .height(46.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(vertical = 6.dp, horizontal = 5.dp)
                             ) {
-                                // Drag handle to reposition mouse bar anywhere on screen
+                                // Drag handle to reposition the panel anywhere on screen
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxHeight()
-                                        .width(18.dp)
+                                        .fillMaxWidth()
+                                        .height(16.dp)
                                         .pointerInput(Unit) {
                                             detectDragGestures { change, dragAmount ->
                                                 change.consume()
@@ -303,15 +300,91 @@ fun VirtualMouseOverlay(
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_drag_indicator),
-                                        contentDescription = "Reposition",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                        modifier = Modifier.size(16.dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(width = 20.dp, height = 3.dp)
+                                            .background(
+                                                MaterialTheme.colorScheme.outlineVariant,
+                                                RoundedCornerShape(1.5.dp)
+                                            )
                                     )
                                 }
 
-                                // 3. Left Click Button (Supports Hold & Drag)
+                                // Scroll Up (supports hold-to-repeat)
+                                var isScrollUpHolding by remember { mutableStateOf(false) }
+                                LaunchedEffect(isScrollUpHolding) {
+                                    if (isScrollUpHolding) {
+                                        virtualMouse.onScrollUp()
+                                        delay(200)
+                                    }
+                                    while (isScrollUpHolding) {
+                                        virtualMouse.onScrollUp()
+                                        delay(50)
+                                    }
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                                    modifier = Modifier
+                                        .size(width = 54.dp, height = 52.dp)
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(
+                                                onPress = {
+                                                    isScrollUpHolding = true
+                                                    tryAwaitRelease()
+                                                    isScrollUpHolding = false
+                                                }
+                                            )
+                                        }
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowUp,
+                                            contentDescription = "Scroll Up",
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+
+                                // Scroll Down (supports hold-to-repeat)
+                                var isScrollDownHolding by remember { mutableStateOf(false) }
+                                LaunchedEffect(isScrollDownHolding) {
+                                    if (isScrollDownHolding) {
+                                        virtualMouse.onScrollDown()
+                                        delay(200)
+                                    }
+                                    while (isScrollDownHolding) {
+                                        virtualMouse.onScrollDown()
+                                        delay(50)
+                                    }
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                                    modifier = Modifier
+                                        .size(width = 54.dp, height = 52.dp)
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(
+                                                onPress = {
+                                                    isScrollDownHolding = true
+                                                    tryAwaitRelease()
+                                                    isScrollDownHolding = false
+                                                }
+                                            )
+                                        }
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowDown,
+                                            contentDescription = "Scroll Down",
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+
+                                // Left Click (supports hold & drag)
                                 var isLeftPressed by remember { mutableStateOf(false) }
                                 FilledTonalButton(
                                     onClick = { /* Handled by pointerInput */ },
@@ -323,11 +396,10 @@ fun VirtualMouseOverlay(
                                     } else {
                                         ButtonDefaults.filledTonalButtonColors()
                                     },
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                    shape = RoundedCornerShape(14.dp),
                                     modifier = Modifier
-                                        .height(36.dp)
-                                        .defaultMinSize(minWidth = 38.dp, minHeight = 36.dp)
+                                        .size(width = 54.dp, height = 44.dp)
                                         .pointerInput(Unit) {
                                             detectTapGestures(
                                                 onPress = {
@@ -343,117 +415,17 @@ fun VirtualMouseOverlay(
                                     Text("Left", fontSize = 12.sp)
                                 }
 
-                                // 4. Middle Click Button
-                                FilledTonalButton(
-                                    onClick = { virtualMouse.onMiddleClick() },
-                                    contentPadding = PaddingValues(horizontal = 7.dp, vertical = 0.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .height(36.dp)
-                                        .defaultMinSize(minWidth = 34.dp, minHeight = 36.dp)
-                                ) {
-                                    Text("Mid", fontSize = 12.sp)
-                                }
-
-                                // 5. Scroll Up Button (Supports hold-to-repeat, enlarged)
-                                var isScrollUpHolding by remember { mutableStateOf(false) }
-                                LaunchedEffect(isScrollUpHolding) {
-                                    if (isScrollUpHolding) {
-                                        virtualMouse.onScrollUp()
-                                        delay(200)
-                                    }
-                                    while (isScrollUpHolding) {
-                                        virtualMouse.onScrollUp()
-                                        delay(50)
-                                    }
-                                }
-                                FilledTonalButton(
-                                    onClick = { virtualMouse.onScrollUp() },
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .height(38.dp)
-                                        .defaultMinSize(minWidth = 44.dp, minHeight = 38.dp)
-                                        .pointerInput(Unit) {
-                                            detectTapGestures(
-                                                onPress = {
-                                                    isScrollUpHolding = true
-                                                    tryAwaitRelease()
-                                                    isScrollUpHolding = false
-                                                }
-                                            )
-                                        }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowUp,
-                                        contentDescription = "Scroll Up",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-
-                                // 6. Scroll Down Button (Supports hold-to-repeat, enlarged)
-                                var isScrollDownHolding by remember { mutableStateOf(false) }
-                                LaunchedEffect(isScrollDownHolding) {
-                                    if (isScrollDownHolding) {
-                                        virtualMouse.onScrollDown()
-                                        delay(200)
-                                    }
-                                    while (isScrollDownHolding) {
-                                        virtualMouse.onScrollDown()
-                                        delay(50)
-                                    }
-                                }
-                                FilledTonalButton(
-                                    onClick = { virtualMouse.onScrollDown() },
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .height(38.dp)
-                                        .defaultMinSize(minWidth = 44.dp, minHeight = 38.dp)
-                                        .pointerInput(Unit) {
-                                            detectTapGestures(
-                                                onPress = {
-                                                    isScrollDownHolding = true
-                                                    tryAwaitRelease()
-                                                    isScrollDownHolding = false
-                                                }
-                                            )
-                                        }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
-                                        contentDescription = "Scroll Down",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-
-                                // 7. Right Click Button
+                                // Right Click
                                 FilledTonalButton(
                                     onClick = { virtualMouse.onRightClick() },
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .height(36.dp)
-                                        .defaultMinSize(minWidth = 38.dp, minHeight = 36.dp)
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier.size(width = 54.dp, height = 44.dp)
                                 ) {
                                     Text("Right", fontSize = 12.sp)
                                 }
 
-                                // 8. Keyboard Button: opens keyboard directly from mouse bar
-                                IconButton(
-                                    onClick = { virtualMouse.onOpenKeyboard() },
-                                    modifier = Modifier.size(34.dp)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_keyboard),
-                                        contentDescription = "Keyboard",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                // 9. Second Minimize Button at the END: so whether looking at start or end, a Cross ("✕") is right there!
+                                // Collapse back to the floating button
                                 IconButton(
                                     onClick = { virtualMouse.minimize() },
                                     modifier = Modifier
@@ -470,128 +442,6 @@ fun VirtualMouseOverlay(
                                         modifier = Modifier.size(17.dp)
                                     )
                                 }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Large Ergonomic Floating Scroll Pillar (Docked at Right Margin)
-            var scrollPillarOffsetY by remember { mutableFloatStateOf(0f) }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 6.dp)
-                    .offset { IntOffset(0, scrollPillarOffsetY.roundToInt()) }
-                    .alpha(0.85f)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(26.dp),
-                    tonalElevation = 8.dp,
-                    shadowElevation = 10.dp,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-                    modifier = Modifier.width(52.dp)
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(3.dp),
-                        modifier = Modifier.padding(vertical = 4.dp, horizontal = 3.dp)
-                    ) {
-                        // Drag handle to reposition pillar along right edge
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(16.dp)
-                                .pointerInput(Unit) {
-                                    detectDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        scrollPillarOffsetY += dragAmount.y
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 20.dp, height = 3.dp)
-                                    .background(
-                                        MaterialTheme.colorScheme.outlineVariant,
-                                        RoundedCornerShape(1.5.dp)
-                                    )
-                            )
-                        }
-
-                        // Big Scroll Up Button (46dp x 48dp, 28dp arrow icon)
-                        var isPillarUpHolding by remember { mutableStateOf(false) }
-                        LaunchedEffect(isPillarUpHolding) {
-                            if (isPillarUpHolding) {
-                                virtualMouse.onScrollUp()
-                                delay(200)
-                            }
-                            while (isPillarUpHolding) {
-                                virtualMouse.onScrollUp()
-                                delay(50)
-                            }
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
-                            modifier = Modifier
-                                .size(width = 46.dp, height = 48.dp)
-                                .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onPress = {
-                                            isPillarUpHolding = true
-                                            tryAwaitRelease()
-                                            isPillarUpHolding = false
-                                        }
-                                    )
-                                }
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.KeyboardArrowUp,
-                                    contentDescription = "Scroll Up",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                        }
-
-                        // Big Scroll Down Button (46dp x 48dp, 28dp arrow icon)
-                        var isPillarDownHolding by remember { mutableStateOf(false) }
-                        LaunchedEffect(isPillarDownHolding) {
-                            if (isPillarDownHolding) {
-                                virtualMouse.onScrollDown()
-                                delay(200)
-                            }
-                            while (isPillarDownHolding) {
-                                virtualMouse.onScrollDown()
-                                delay(50)
-                            }
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
-                            modifier = Modifier
-                                .size(width = 46.dp, height = 48.dp)
-                                .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onPress = {
-                                            isPillarDownHolding = true
-                                            tryAwaitRelease()
-                                            isPillarDownHolding = false
-                                        }
-                                    )
-                                }
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.KeyboardArrowDown,
-                                    contentDescription = "Scroll Down",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(28.dp)
-                                )
                             }
                         }
                     }
