@@ -68,13 +68,13 @@ class Toolbar(private val activity: VncActivity) {
     private val flyouts = mutableMapOf<ToggleButton, View>()
 
     fun initialize() {
-        binding.keyboardBtn.setOnClickListener { activity.showKeyboard(); close() }
+        binding.keyboardBtn.setOnClickListener { activity.toggleKeyboard(); close() }
         binding.zoomOptionsToggle.setOnLongClickListener { resetZoomToDefault(); close(); true }
         binding.zoomResetBtn.setOnClickListener { resetZoomToDefault(); close() }
         binding.zoomResetBtn.setOnLongClickListener { resetZoom(); close(); true }
         binding.zoomLockBtn.setOnCheckedChangeListener { _, checked -> toggleZoomLock(checked); close() }
         binding.zoomSaveBtn.setOnClickListener { saveZoom(); close() }
-        binding.virtualKeysBtn.setOnClickListener { activity.virtualKeys.show(true); activity.virtualMouse.show(); close() }
+        binding.virtualKeysBtn.setOnClickListener { activity.virtualKeys.toggle(saveVisibility = true); close() }
         binding.mouseBtn.setOnClickListener { activity.virtualMouse.toggle(); close() }
 
         // Root view is transparent. Click on it should work just like a click in scrim area

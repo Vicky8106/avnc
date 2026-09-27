@@ -38,6 +38,7 @@ import com.vncandroid.free.checkDoesNotExist
 import com.vncandroid.free.checkIsDisplayed
 import com.vncandroid.free.checkIsNotDisplayed
 import com.vncandroid.free.checkKeyboardIsDisplayed
+import com.vncandroid.free.checkKeyboardIsHidden
 import com.vncandroid.free.checkWillBeCompletelyDisplayed
 import com.vncandroid.free.checkWillBeDisplayed
 import com.vncandroid.free.checkWithTimeout
@@ -128,6 +129,34 @@ class VncActivityTest : VncSessionTest() {
             onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
             onView(withId(R.id.keyboard_btn)).doClick()
             onView(withId(R.id.input_view)).checkKeyboardIsDisplayed()
+        }
+    }
+
+    @Test
+    fun toolbarKeyboardButtonToggles() {
+        vncSession.run {
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.keyboard_btn)).doClick()
+            onView(withId(R.id.input_view)).checkKeyboardIsDisplayed()
+
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.keyboard_btn)).doClick()
+            onView(withId(R.id.input_view)).checkKeyboardIsHidden()
+        }
+    }
+
+    @Test
+    fun toolbarVirtualKeysButtonToggles() {
+        vncSession.run {
+            vncSession.onActivity { assertTrue(it.virtualKeys.isVisible) }
+
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.virtual_keys_btn)).doClick()
+            vncSession.onActivity { assertFalse(it.virtualKeys.isVisible) }
+
+            onView(withId(R.id.drawer_layout)).perform(DrawerActions.open())
+            onView(withId(R.id.virtual_keys_btn)).doClick()
+            vncSession.onActivity { assertTrue(it.virtualKeys.isVisible) }
         }
     }
 

@@ -40,6 +40,7 @@ import com.vncandroid.free.util.EdgeToEdgeHelper
 import com.vncandroid.free.util.SamsungDex
 import com.vncandroid.free.util.debugCheck
 import com.vncandroid.free.util.enableChildLayoutTransitions
+import com.vncandroid.free.util.hideKeyboard
 import com.vncandroid.free.util.isKeyboardVisible
 import com.vncandroid.free.util.loopAnimatedDrawable
 import com.vncandroid.free.util.showKeyboard
@@ -447,6 +448,16 @@ class VncActivity : AppCompatActivity() {
     fun showKeyboard() {
         showKeyboard(currentFocus ?: binding.inputView)
         virtualKeys.onKeyboardOpen()
+    }
+
+    fun toggleKeyboard() {
+        val view = currentFocus ?: binding.inputView
+        if (isKeyboardVisible(view)) {
+            hideKeyboard(view)
+        } else {
+            showKeyboard(view)
+            virtualKeys.onKeyboardOpen()
+        }
     }
 
     private fun updatePointerCapture(capturePointer: Boolean) {

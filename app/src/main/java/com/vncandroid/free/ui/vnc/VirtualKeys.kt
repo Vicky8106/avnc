@@ -110,6 +110,15 @@ class VirtualKeys(val activity: VncActivity, private val inputHandler: InputHand
         if (saveVisibility) pref.runInfo.showVirtualKeys = false
     }
 
+    fun toggle(saveVisibility: Boolean = false) {
+        if (isVisible) {
+            hide(saveVisibility)
+        } else {
+            show(saveVisibility)
+            virtualMouse.show()
+        }
+    }
+
     fun setTextMode(enabled: Boolean) {
         isTextModeState.value = enabled
         pref.runInfo.virtualKeysTextBoxVisible = enabled
