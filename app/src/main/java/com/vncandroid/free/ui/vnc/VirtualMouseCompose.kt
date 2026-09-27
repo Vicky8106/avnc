@@ -180,17 +180,21 @@ class VirtualMouse(private val activity: VncActivity) {
  * Every move is consumed, so touches starting on the control never leak through
  * to the frame underneath (that leak-through is what made dragging jitter).
  *
- * Returns the total distance travelled, so callers can tell taps from drags.
+ * Returns the total distance travelled (so callers can tell taps from drags)
+ * plus whatever drag was already applied (so taps can undo micro-moves).
  */
+private data class PressDragResult(val distance: Float, val appliedX: Float, val appliedY: Float)
+
 private suspend fun AwaitPointerEventScope.trackPressAndDrag(
     touchSlop: Float,
     onDragDelta: (dx: Float, dy: Float) -> Unit
-): Float {
+): PressDragResult {
     val down = awaitFirstDown(requireUnconsumed = false)
     down.consume()
     var totalDx = 0f
     var totalDy = 0f
-    var lastPos = down.position
+    var appliedX = 0f
+    var appliedY = 0f
     val threshold = touchSlop * 0.5f
     while (true) {
         val event = awaitPointerEvent()
@@ -199,17 +203,20 @@ private suspend fun AwaitPointerEventScope.trackPressAndDrag(
             change.consume()
             break
         }
+        // Framework-tracked delta: unlike a manually stored last position, the
+        // framework keeps previousPosition consistent across the layout shifts
+        // that applying the drag itself causes, so dragging tracks 1:1.
+        val delta = change.position - change.previousPosition
         change.consume()
-        val dx = change.position.x - lastPos.x
-        val dy = change.position.y - lastPos.y
-        totalDx += dx
-        totalDy += dy
+        totalDx += delta.x
+        totalDy += delta.y
         if (hypot(totalDx, totalDy) > threshold) {
-            onDragDelta(dx, dy)
+            onDragDelta(delta.x, delta.y)
+            appliedX += delta.x
+            appliedY += delta.y
         }
-        lastPos = change.position
     }
-    return hypot(totalDx, totalDy)
+    return PressDragResult(hypot(totalDx, totalDy), appliedX, appliedY)
 }
 
 @Composable
@@ -223,6 +230,15 @@ fun VirtualMouseOverlay(
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
     val touchSlop = LocalViewConfiguration.current.touchSlop
+
+    // Return to the anchor corner whenever the mouse is re-shown, so free
+    // dragging can never strand it off-screen with no way back.
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            offsetX = 0f
+            offsetY = 0f
+        }
+    }
 
     AnimatedVisibility(
         visible = isVisible,
@@ -238,8 +254,7 @@ fun VirtualMouseOverlay(
                     .align(Alignment.BottomEnd)
                     .padding(end = 20.dp, bottom = 80.dp)
                     .offset {
-                        val clampedX = if (isExpanded) offsetX.coerceAtMost(0f) else offsetX
-                        IntOffset(clampedX.roundToInt(), offsetY.roundToInt())
+                        IntOffset(offsetX.roundToInt(), offsetY.roundToInt())
                     }
                     .alpha(0.80f)
             ) {
@@ -258,13 +273,15 @@ fun VirtualMouseOverlay(
                                 .clip(CircleShape)
                                 .pointerInput(Unit) {
                                     awaitEachGesture {
-                                        val dist = trackPressAndDrag(touchSlop) { dx, dy ->
+                                        val result = trackPressAndDrag(touchSlop) { dx, dy ->
                                             offsetX += dx
                                             offsetY += dy
                                         }
-                                        // A press that never became a drag expands the panel;
-                                        // an actual drag only moves it.
-                                        if (dist < touchSlop) {
+                                        if (result.distance < touchSlop * 2f) {
+                                            // Tap (or wobble): undo any micro-move so taps can
+                                            // never drift the icon, then expand the panel.
+                                            offsetX -= result.appliedX
+                                            offsetY -= result.appliedY
                                             virtualMouse.expand()
                                         }
                                     }
