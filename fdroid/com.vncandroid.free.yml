@@ -1,0 +1,34 @@
+Categories:
+  - Connectivity
+  - Internet
+  - Remote Access
+  - System
+License: GPL-3.0-or-later
+AuthorName: Vicky8106
+AuthorWebSite: https://github.com/Vicky8106
+SourceCode: https://github.com/Vicky8106/avnc
+IssueTracker: https://github.com/Vicky8106/avnc/issues
+Changelog: https://github.com/Vicky8106/avnc/releases
+
+AutoName: VNC Android Free
+
+RepoType: git
+Repo: https://github.com/Vicky8106/avnc.git
+
+Builds:
+  - versionName: 3.3.1
+    versionCode: 53
+    commit: v1.8.3
+    subdir: app
+    submodules: true
+    gradle:
+      - yes
+    rm:
+      - extern/libvncserver/webclients
+      - extern/libvncserver/doc/doxygen-awesome-css/package.json
+    ndk: r28
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 3.3.1
+CurrentVersionCode: 53
