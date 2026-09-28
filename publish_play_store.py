@@ -77,6 +77,17 @@ def check_app_status(service, package_name: str):
         return False
 
 
+LANGUAGE_MAP = {
+    "de": "de-DE",
+    "fr": "fr-FR",
+    "ko": "ko-KR",
+    "pl": "pl-PL",
+    "pt": "pt-PT",
+    "tr": "tr-TR",
+    "fa_IR": "fa",
+}
+
+
 def upload_metadata(service, package_name: str, edit_id: str, metadata_dir: str):
     if not os.path.exists(metadata_dir):
         print(f"[!] Metadata directory {metadata_dir} not found. Skipping metadata upload.")
@@ -89,6 +100,7 @@ def upload_metadata(service, package_name: str, edit_id: str, metadata_dir: str)
     fallback_title = open(default_title_file).read().strip() if os.path.exists(default_title_file) else "VNC android free"
 
     for lang in langs:
+        play_lang = LANGUAGE_MAP.get(lang, lang)
         p = os.path.join(metadata_dir, lang)
         title_f = os.path.join(p, "title.txt")
         short_f = os.path.join(p, "short_description.txt")
@@ -111,12 +123,11 @@ def upload_metadata(service, package_name: str, edit_id: str, metadata_dir: str)
             service.edits().listings().update(
                 packageName=package_name,
                 editId=edit_id,
-                language=lang,
+                language=play_lang,
                 body=body
             ).execute()
-            print(f"  [✓] Updated listing for '{lang}'")
+            print(f"  [✓] Updated listing for '{play_lang}' (from '{lang}')")
         except Exception as e:
-            # Some language codes may differ between fastlane and Play Store (e.g. pt-BR vs pt-rBR)
             print(f"  [-] Note for '{lang}': {e}")
 
 
@@ -151,6 +162,7 @@ def publish_release(service, package_name: str, bundle_path: str, track: str, st
             upload_metadata(service, package_name, edit_id, metadata_dir)
 
         # Update release track
+        track_body = None
         if version_code is not None:
             track_body = {
                 "releases": [
@@ -176,8 +188,25 @@ def publish_release(service, package_name: str, bundle_path: str, track: str, st
             service.edits().delete(packageName=package_name, editId=edit_id).execute()
         else:
             print("[*] Committing edit to Google Play Console...")
-            commit_res = service.edits().commit(packageName=package_name, editId=edit_id).execute()
-            print(f"[🎉] SUCCESS! Release committed to Google Play! Commit ID: {commit_res.get('id')}")
+            try:
+                commit_res = service.edits().commit(packageName=package_name, editId=edit_id).execute()
+                print(f"[🎉] SUCCESS! Release committed to Google Play! Commit ID: {commit_res.get('id')}")
+            except HttpError as commit_err:
+                if status == "completed" and track_body is not None:
+                    print(f"[-] Commit with status='completed' rejected ({commit_err}).")
+                    print("[*] Retrying commit with status='draft' so the AAB is safely saved in Play Console...")
+                    track_body["releases"][0]["status"] = "draft"
+                    service.edits().tracks().update(
+                        packageName=package_name,
+                        editId=edit_id,
+                        track=track,
+                        body=track_body
+                    ).execute()
+                    commit_res = service.edits().commit(packageName=package_name, editId=edit_id).execute()
+                    print(f"[🎉] SUCCESS! Release committed to Google Play as DRAFT! Commit ID: {commit_res.get('id')}")
+                    print("[i] The AAB is now uploaded and assigned to your track. Go to Play Console to review and click 'Send for review'.")
+                else:
+                    raise commit_err
 
     except Exception as e:
         print(f"[!] Error during publication: {e}")

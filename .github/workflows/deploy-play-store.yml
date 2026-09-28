@@ -40,14 +40,6 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup NDK
-        uses: nttld/setup-ndk@v1
-        with:
-          ndk-version: r28
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
@@ -79,12 +71,29 @@ jobs:
             echo "Notice: PLAY_SERVICE_ACCOUNT_KEY secret not found."
           fi
 
-      - name: Publish AAB to Google Play Store
+      - name: Setup Python
         if: steps.check-creds.outputs.has_secret == 'true'
-        uses: r0adkll/upload-google-play@v1
+        uses: actions/setup-python@v5
         with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_KEY }}
-          packageName: com.vncandroid.free
-          releaseFiles: app/build/outputs/bundle/release/*.aab
-          track: ${{ github.event.inputs.track || 'production' }}
-          status: ${{ github.event.inputs.release_status || 'completed' }}
+          python-version: "3.11"
+
+      - name: Install Google Publisher API Dependencies
+        if: steps.check-creds.outputs.has_secret == 'true'
+        run: pip install google-api-python-client google-auth
+
+      - name: Publish AAB & Store Listings to Google Play
+        if: steps.check-creds.outputs.has_secret == 'true'
+        env:
+          PLAY_KEY_CONTENT: ${{ secrets.PLAY_SERVICE_ACCOUNT_KEY }}
+        run: |
+          echo "$PLAY_KEY_CONTENT" > /tmp/play-key.json
+          AAB_FILE=$(ls app/build/outputs/bundle/release/*.aab | head -n 1)
+          echo "Found release bundle: $AAB_FILE"
+          python3 publish_play_store.py \
+            --key /tmp/play-key.json \
+            --package com.vncandroid.free \
+            --bundle "$AAB_FILE" \
+            --track "${{ github.event.inputs.track || 'production' }}" \
+            --status "${{ github.event.inputs.release_status || 'completed' }}" \
+            --metadata-dir metadata
+          rm -f /tmp/play-key.json
