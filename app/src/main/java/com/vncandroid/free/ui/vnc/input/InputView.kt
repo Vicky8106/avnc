@@ -27,6 +27,8 @@ import com.vncandroid.free.viewmodel.VncViewModel
 import kotlinx.coroutines.launch
 
 import android.view.KeyCharacterMap
+import com.vncandroid.free.ui.vnc.VirtualKey
+import com.vncandroid.free.util.isShiftNeeded
 import com.vncandroid.free.vnc.XKeySym
 import com.vncandroid.free.vnc.XKeySymUnicode
 
@@ -164,7 +166,8 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
         }
 
         private fun sendCharKey(codePoint: Int) {
-            val messenger = (context as? VncActivity)?.viewModel?.messenger
+            val activity = context as? VncActivity
+            val messenger = activity?.viewModel?.messenger
             val keySym = when (codePoint) {
                 '\n'.code, '\r'.code -> XKeySym.XK_Return
                 ' '.code -> XKeySym.XK_space
@@ -176,8 +179,10 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
                 }
             }
             if (keySym != 0) {
+                val shiftAlreadyActive = activity?.virtualKeys?.activeToggleKeys?.get(VirtualKey.LeftShift) == true
+                val withShift = !shiftAlreadyActive && isShiftNeeded(codePoint)
                 if (messenger != null) {
-                    messenger.sendKeyPress(keySym, 0, 18L)
+                    messenger.sendKeyPress(keySym, 0, 18L, withShift = withShift)
                 } else {
                     inputHandler?.onKeyEvent(KeyEvent(0L, String(Character.toChars(codePoint)), KeyCharacterMap.VIRTUAL_KEYBOARD, 0))
                 }

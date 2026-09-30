@@ -27,16 +27,18 @@ android {
             }
         }
 
-        externalNativeBuild {
-            cmake {
-                arguments(
-                        "-DANDROID_STL=none", // We are not using STL
-                        "-DCMAKE_TOOLCHAIN_FILE=${layout.settingsDirectory}/extern/vcpkg/scripts/buildsystems/vcpkg.cmake",
-                        "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=\${ndk.moduleNdkDir}/build/cmake/android.toolchain.cmake",
-                        "-DVCPKG_MANIFEST_MODE=ON"
-                )
+        if (!System.getProperty("os.name").lowercase().contains("windows")) {
+            externalNativeBuild {
+                cmake {
+                    arguments(
+                            "-DANDROID_STL=none", // We are not using STL
+                            "-DCMAKE_TOOLCHAIN_FILE=${layout.settingsDirectory}/extern/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                            "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=\${ndk.moduleNdkDir}/build/cmake/android.toolchain.cmake",
+                            "-DVCPKG_MANIFEST_MODE=ON"
+                    )
 
-                targets("native-vnc", "vncclient")
+                    targets("native-vnc", "vncclient")
+                }
             }
         }
     }
@@ -80,10 +82,12 @@ android {
         compose = true
     }
 
-    externalNativeBuild {
-        cmake {
-            version = "3.22.1"
-            path("CMakeLists.txt")
+    if (!System.getProperty("os.name").lowercase().contains("windows")) {
+        externalNativeBuild {
+            cmake {
+                version = "3.22.1"
+                path("CMakeLists.txt")
+            }
         }
     }
 

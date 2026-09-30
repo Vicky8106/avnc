@@ -31,6 +31,7 @@ import com.vncandroid.free.R
 import com.vncandroid.free.ui.vnc.input.InputHandler
 import com.vncandroid.free.util.AppPreferences
 import com.vncandroid.free.util.getClipboardText
+import com.vncandroid.free.util.isShiftNeeded
 import com.vncandroid.free.util.isTrue
 import com.vncandroid.free.util.toggleKeyboard
 import com.vncandroid.free.vnc.XKeySym
@@ -299,7 +300,8 @@ class VirtualKeys(val activity: VncActivity, private val inputHandler: InputHand
                     }
 
                     if (keySym != 0) {
-                        messenger.sendKeyPress(keySym, 0, pressDurationMs = 18L)
+                        val withShift = isShiftNeeded(codePoint)
+                        messenger.sendKeyPress(keySym, 0, pressDurationMs = 18L, withShift = withShift)
                         delay(pacingDelay)
                     }
                 }

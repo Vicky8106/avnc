@@ -12,6 +12,7 @@ import android.os.Build
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import com.vncandroid.free.util.AppPreferences
+import com.vncandroid.free.util.isShiftNeeded
 import com.vncandroid.free.vnc.XKeySym
 import com.vncandroid.free.vnc.XKeySymAndroid
 import com.vncandroid.free.vnc.XKeySymUnicode
@@ -312,6 +313,16 @@ class KeyHandler(private val dispatcher: Dispatcher, prefs: AppPreferences) {
         // set to 'Shift pressed'. One would think at least Google won't fuck this up, but here we are)
         var wrapWithShiftKey = model.source.isShiftPressed
 
+        // Keys like '@', '#', '%' etc. can be generated in multiple ways (e.g single KeyEvent.KEYCODE_AT
+        // vs KeyEvent.KEYCODE_SHIFT + KeyEvent.KEYCODE_2). If single-keycode variant of such keys is
+        // received, we need to fake the Shift press.
+        if (!wrapWithShiftKey && model.inEvents.size == 1) model.inEvents[0].let {
+            if (it.scanCode == 0) {
+                if ((it.uChar != 0 && isShiftNeeded(it.uChar)) || it.keyCode == KeyEvent.KEYCODE_AT) {
+                    wrapWithShiftKey = true
+                }
+            }
+        }
 
         if (wrapWithShiftKey) {
             model.inEvents.add(0, InEvent(true, KeyEvent.KEYCODE_SHIFT_LEFT))
@@ -328,7 +339,8 @@ class KeyHandler(private val dispatcher: Dispatcher, prefs: AppPreferences) {
             val event = model.inEvents[i]
             if (event.isDown && event.uChar > 0) {
                 if ((Character.isUpperCase(event.uChar) && !isCapsLockOn) ||
-                    (Character.isLowerCase(event.uChar) && isCapsLockOn)) {
+                    (Character.isLowerCase(event.uChar) && isCapsLockOn) ||
+                    (!Character.isLetterOrDigit(event.uChar) && isShiftNeeded(event.uChar))) {
 
                     model.inEvents.add(i, InEvent(true, KeyEvent.KEYCODE_SHIFT_LEFT))
                     i += 2 // Inserted Shift event + Current event

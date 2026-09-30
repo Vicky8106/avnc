@@ -85,8 +85,17 @@ class Messenger(private val client: VncClient) {
         return execute { client.sendKeyEvent(keySym, xtCode, isDown) }
     }
 
-    fun sendKeyPress(keySym: Int, xtCode: Int = 0, pressDurationMs: Long = 18L): Boolean {
+    fun sendKeyPress(keySym: Int, xtCode: Int = 0, pressDurationMs: Long = 18L, withShift: Boolean = false): Boolean {
         return execute {
+            if (withShift) {
+                client.sendKeyEvent(XKeySym.XK_Shift_L, 0, true)
+                if (pressDurationMs > 0) {
+                    try {
+                        Thread.sleep(5)
+                    } catch (_: InterruptedException) {
+                    }
+                }
+            }
             client.sendKeyEvent(keySym, xtCode, true)
             if (pressDurationMs > 0) {
                 try {
@@ -95,6 +104,15 @@ class Messenger(private val client: VncClient) {
                 }
             }
             client.sendKeyEvent(keySym, xtCode, false)
+            if (withShift) {
+                if (pressDurationMs > 0) {
+                    try {
+                        Thread.sleep(5)
+                    } catch (_: InterruptedException) {
+                    }
+                }
+                client.sendKeyEvent(XKeySym.XK_Shift_L, 0, false)
+            }
         }
     }
 

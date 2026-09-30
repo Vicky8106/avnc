@@ -32,3 +32,28 @@ fun toggleKeyboard(view: View) {
     else
         showKeyboard(view)
 }
+
+/**
+ * Determines whether typing the given character requires the Shift modifier
+ * on a standard keyboard layout (US QWERTY / physical BMC HID).
+ */
+fun isShiftNeeded(codePoint: Int): Boolean {
+    if (codePoint in 'A'.code..'Z'.code) return true
+    if (Character.isUpperCase(codePoint)) return true
+    if (codePoint < 128) {
+        val c = codePoint.toChar()
+        return c in "~!@#$%^&*()_+{}|:\"<>?"
+    }
+    if (Character.isBmpCodePoint(codePoint)) {
+        try {
+            val kcm = android.view.KeyCharacterMap.load(android.view.KeyCharacterMap.VIRTUAL_KEYBOARD)
+            val events = kcm.getEvents(charArrayOf(codePoint.toChar()))
+            if (events != null && events.size == 4 &&
+                (events[0].keyCode == android.view.KeyEvent.KEYCODE_SHIFT_LEFT || events[0].keyCode == android.view.KeyEvent.KEYCODE_SHIFT_RIGHT)) {
+                return true
+            }
+        } catch (_: Exception) {
+        }
+    }
+    return false
+}
